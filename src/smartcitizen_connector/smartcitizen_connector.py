@@ -170,7 +170,7 @@ class ScApiDevice:
         return self._api_url
 
     @staticmethod
-    def get_kits() -> list[Kit]:
+    def get_kits() -> List[Kit]:
         kits = get(API_URL + 'kits/?per_page=200')
 
         if kits.status_code == 429:
@@ -219,7 +219,7 @@ class ScApiDevice:
         tags: Optional[list] = None,
         tag_method: Optional[str] = 'any',
         full: Optional[bool] = False,
-        ) -> list[DeviceSummary]:
+        ) -> List[DeviceSummary]:
         """
         Gets devices from Smart Citizen API with certain requirements
         Parameters
