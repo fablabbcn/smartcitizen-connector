@@ -15,7 +15,7 @@ class Kit(BaseModel):
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    sensors: Optional[list[Sensor]] = None
+    sensors: Optional[List[Sensor]] = None
 
 class Owner(BaseModel):
     id: int
@@ -30,7 +30,7 @@ class Location(BaseModel):
 
 class Data(BaseModel):
     location: Optional[Location]= None
-    sensors: Optional[list[Sensor]] = None
+    sensors: Optional[List[Sensor]] = None
 
 class DeviceSummary(BaseModel):
     id: int
