@@ -4,10 +4,10 @@ from typing import Optional, List
 from requests import get
 import urllib3
 from pandas import DataFrame, to_datetime
-from tzwhere import tzwhere
+from timezonefinder import TimezoneFinder
 from datetime import datetime
 
-tz_where = tzwhere.tzwhere(forceTZ=True)
+tf = TimezoneFinder()
 
 urllib3.disable_warnings()
 
@@ -472,7 +472,7 @@ class ScApiDevice:
             # Localize it
 
             if latitude is not None and longitude is not None:
-                self.timezone = tz_where.tzNameAt(latitude, longitude, forceTZ=True)
+                self.timezone = tf.timezone_at(lng=longitude, lat=latitude)
 
         std_out ('Device {} timezone is {}'.format(self.id, self.timezone))
 

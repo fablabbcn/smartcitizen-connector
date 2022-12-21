@@ -16,7 +16,7 @@ PROJECT_URLS = {
 
 setup(
     name="smartcitizen-connector",
-    version="0.1.2",
+    version="0.2.0",
     description="Python connector to download information collected in SmartCitizen API",
     author="Óscar González",
     license="GNU General Public License v3",
@@ -30,7 +30,7 @@ setup(
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     python_requires=">=3.6",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
         'Intended Audience :: Developers',
@@ -40,8 +40,9 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Utilities",
         "Natural Language :: English",
     ],
-    install_requires=["pydantic", "requests", "pandas", "tzwhere", "urllib3"],
+    install_requires=["pydantic", "requests", "pandas", "timezonefinder", "urllib3"],
 )
