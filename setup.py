@@ -41,7 +41,7 @@ setup(
         "Topic :: Utilities",
         "Natural Language :: English",
     ],
-    install_requires=["pydantic", "requests", "pandas", "timezonefinder", "urllib3", "aiohttp"],
+    install_requires=["pydantic", "requests", "pandas", "timezonefinder", "urllib3", "aiohttp", 'termcolor', "tqdm"],
     setup_requires=['wheel'],
     zip_safe=False
 )

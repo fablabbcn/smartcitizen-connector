@@ -18,7 +18,7 @@ rollup_table = {
     "ms":  "milliseconds"
 }
 
-rollup_2_freq_lut = (
+freq_2_rollup_lut = (
     ['A', 'y'],
     ['M', 'M'],
     ['W', 'w'],
@@ -33,7 +33,7 @@ def clean(df, clean_na = None, how = 'all'):
     """
     Helper function for cleaning nan in a pandas.   Parameters
     ----------
-        df: pandas.           The o clean
+        df: pandas.DataFrame to clean
         clean_na: None or string
             type of nan cleaning. If not None, can be 'drop' or 'fill'
         how: 'string'
@@ -50,25 +50,33 @@ def clean(df, clean_na = None, how = 'all'):
             df = df.fillna(method = 'bfill').fillna(method = 'ffill')
     return df
 
-def convert_rollup_to_freq(rollup):
-    # Convert frequency from pandas to API's
-    for index, letter in enumerate(rollup):
+def convert_freq_to_rollup(freq):
+    """
+    Helper function for converting a pandas freq into a rollup of SC API's
+    ----------
+        freq: str freq from pandas
+    Returns
+    -------
+        rollup: str rollup from SC
+    """
+    # Convert freq from pandas to SC API's
+    for index, letter in enumerate(freq):
         try:
             aux = int(letter)
         except:
             index_first = index
             letter_first = letter
-            frequency_value = rollup[:index_first]
-            rollup_unit = rollup[index_first:]
+            rollup_value = freq[:index_first]
+            freq_unit = freq[index_first:]
             break
 
-    for item in rollup_2_freq_lut:
-        if item[1] == rollup_unit:
-            frequency_unit = item[0]
+    for item in freq_2_rollup_lut:
+        if item[0] == freq_unit:
+            rollup_unit = item[1]
             break
 
-    frequency = frequency_value + frequency_unit
-    return frequency
+    rollup = rollup_value + rollup_unit
+    return rollup
 
 def localise_date(date, timezone, tzaware=True):
     """
