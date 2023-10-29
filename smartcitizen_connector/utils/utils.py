@@ -3,6 +3,7 @@ from timezonefinder import TimezoneFinder
 from datetime import datetime
 from smartcitizen_connector.config import *
 from typing import Optional
+from termcolor import colored
 
 tf = TimezoneFinder()
 
@@ -126,11 +127,11 @@ def std_out(msg: str,
     if mtype is None and priority>1:
         print(f'[{stamp}] - ' + '[INFO] ' + msg)
     elif mtype == 'SUCCESS' and priority>0:
-        print(f'[{stamp}] - ' + '[SUCCESS] ' + msg)
+        print(f'[{stamp}] - ' + colored('[SUCCESS] ', 'green') + msg)
     elif mtype == 'WARNING' and priority>0:
-        print(f'[{stamp}] - ' + '[WARNING] ' + msg)
+        print(f'[{stamp}] - ' + colored('[WARNING] ', 'yellow') + msg)
     elif mtype == 'ERROR' and priority>0:
-        print(f'[{stamp}] - ' + '[ERROR] ' + msg)
+        print(f'[{stamp}] - ' + colored('[ERROR] ', 'red') + msg)
 
 import re
 
