@@ -33,7 +33,7 @@ print (d.json.name)
 print (d.json.owner)
 
 await d.get_data(freq = '1Min') # returns pandas dataframe
-...
+print (d.data)
 ```
 
 Search (see [docs](https://developer.smartcitizen.me/#basic-searching))
