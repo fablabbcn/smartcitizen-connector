@@ -96,6 +96,7 @@ def search_by_query(endpoint: Optional[str] = 'devices',
 
     df = DataFrame()
     isn = True
+    std_out(f'Getting: {url}')
     while isn:
         r = get(url, headers = headers)
         r.raise_for_status()
