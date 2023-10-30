@@ -6,7 +6,7 @@ class Sensor(BaseModel):
     id: int
     name: str
     description: str
-    unit: str
+    unit: Optional[str] = None
     value: Optional[float] = None
     prev_value: Optional[float] = None
     last_reading_at: Optional[datetime] = None
