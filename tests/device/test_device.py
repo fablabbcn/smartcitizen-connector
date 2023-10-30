@@ -3,7 +3,7 @@ from smartcitizen_connector import SCDevice
 from smartcitizen_connector.utils import localise_date
 import asyncio
 
-def test_connector():
+def test_device():
     id = 16549
     freq = '1Min'
     resample = False

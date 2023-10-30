@@ -2,7 +2,7 @@ import pytest
 from smartcitizen_connector import search_by_query
 from requests import HTTPError
 
-def test_connector():
+def test_search():
     d_id = 4498
     d_uuid = "f7bc1d04-cebc-4989-b701-9912ba2ab20f"
     u_uuid = "76affe1f-a1b8-4a47-bc0b-07bb8f9c700f"
