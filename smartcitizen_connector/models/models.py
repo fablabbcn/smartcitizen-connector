@@ -50,14 +50,25 @@ class HardwareInfo(BaseModel):
     sam_bd: str
     esp_ver: str
     sam_ver: str
-    rcause: Optional['str'] = None
+    rcause: Optional[str] = None
+
+class HardwareVersion(BaseModel):
+    from_date: Optional[datetime] = None
+    to_date: Optional[datetime] = None
+    ids: Optional[dict] = None
+
+class HardwarePostprocessing(BaseModel):
+    blueprint_url: Optional[str] = None
+    description: Optional[str] = None
+    versions: Optional[List[HardwareVersion]] = None
+    forwarding: Optional[str] = None
 
 class Postprocessing(BaseModel):
     id: int
-    blueprint_url: Optional['str'] = None
-    hardware_url: Optional['str'] = None
-    forwarding_params: Optional['str'] = None
-    meta: Optional['str'] = None
+    blueprint_url: Optional[str] = None
+    hardware_url: Optional[str] = None
+    forwarding_params: Optional[str] = None
+    meta: Optional[str] = None
     latest_postprocessing: datetime
     created_at: datetime
     updated_at: datetime

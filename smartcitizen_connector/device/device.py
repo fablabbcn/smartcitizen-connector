@@ -1,5 +1,4 @@
-from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device,
-    Measurement, Postprocessing, HardwareInfo)
+from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, HardwarePostprocessing, Measurement, Postprocessing, HardwareInfo)
 from smartcitizen_connector.config import *
 from smartcitizen_connector.utils import *
 from typing import Optional, List, Dict
@@ -9,6 +8,7 @@ from datetime import datetime
 from os import environ
 from pydantic import TypeAdapter
 import sys
+import json
 from math import isnan
 from tqdm import trange
 from json import dumps, JSONEncoder, loads
@@ -39,6 +39,8 @@ class SCDevice:
         self.id = id
         self.url = f'{DEVICES_URL}{self.id}'
         self.page = f'{FRONTEND_URL}{self.id}'
+        self.method = 'async'
+        self._metrics = list()
         r = self.__safe_get__(self.url)
         self.json = TypeAdapter(Device).validate_python(r.json())
         self.__get_timezone__()
@@ -74,10 +76,29 @@ class SCDevice:
             self.json.postprocessing.hardware_url = tentative_url
 
             std_out (f'Device {self.id} has postprocessing information:\n{self.json.postprocessing}')
+
+            # Make hardware postprocessing
+            if url_checker(self.json.postprocessing.hardware_url):
+                r = self.__safe_get__(self.json.postprocessing.hardware_url)
+                self._hardware_postprocessing = TypeAdapter(HardwarePostprocessing).validate_python(r.json())
+
+            # Convert that to metrics now
+            if self._hardware_postprocessing is not None:
+                for version in self._hardware_postprocessing.versions:
+                    if version.from_date is not None:
+                        if version.from_date > self.last_reading_at:
+                            std_out('Postprocessing from_date is later than device last_reading_at. Skipping', 'ERROR')
+                            continue
+
+                    for slot in version.ids:
+                        metrics = None
+                        if slot.startswith('AS'):
+                            metric = get_alphasense(slot, version.ids[slot])
+                        elif slot.startswith('PT'):
+                            metric = get_pt_temp(slot, version.ids[slot])
+                        [self._metrics.append(m) for m in metric]
         else:
             std_out (f'Device {self.id} has no postprocessing information')
-
-        return self.json.postprocessing
 
     async def get_datum(self, session, url, headers, sensor_id)->Dict:
         async with session.get(url, headers = headers) as resp:
@@ -94,7 +115,8 @@ class SCDevice:
         max_date: Optional[datetime] = None,
         freq: Optional[str] = '1Min',
         clean_na: Optional[str] = None,
-        resample: Optional[bool] = False)->DataFrame:
+        resample: Optional[bool] = False,
+        only_unprocessed: Optional[bool] = False)->DataFrame:
 
         if 'SC_ADMIN_BEARER' in environ:
             std_out('Admin Bearer found, using it', 'SUCCESS')
@@ -390,6 +412,34 @@ class SCDevice:
             std_out(f"API responded with {response.status_code}")
 
         return False
+
+    @property
+    def blueprint_url(self):
+        if url_checker(self.json.postprocessing.blueprint_url):
+            return self.json.postprocessing.blueprint_url
+        elif url_checker(self.json.postprocessing.hardware_url):
+            return self.hardware_postprocessing.blueprint_url
+
+    @property
+    def hardware_postprocessing(self):
+        return self._hardware_postprocessing
+
+    @property
+    def postprocessing(self):
+        return self.json.postprocessing
+
+    @property
+    def latest_postprocessing(self):
+        return self.postprocessing.latest_postprocessing
+
+    @property
+    def last_reading_at(self):
+        return self.json.last_reading_at
+
+    # TODO Rethink and make into a model?
+    @property
+    def metrics(self):
+        return self._metrics
 
     # @staticmethod
     # def get_devices(

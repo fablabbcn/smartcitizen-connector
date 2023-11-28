@@ -165,3 +165,55 @@ def process_headers(headers):
                 elif which == 'first':
                     result['first'] = chunk[0].strip('<').strip('>')
     return result
+
+def get_alphasense(slot, sensor_id):
+    result = list()
+
+    # Alphasense type - AAN 803-04
+    as_type = config.as_sensor_codes[sensor_id[0:3]]
+    channel = as_type[as_type.index('_')+1:]
+    metric = channel
+    if channel == 'OX':
+        metric = 'O3'
+
+    # Get working and auxiliary electrode names
+    wen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+1]}"
+    aen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+2]}"
+
+    # Simply fill it up
+    std_out(f'{metric} found in blueprint metrics, filling up with hardware info')
+
+    result.append({metric: {
+        'kwargs': {
+            'we': wen,
+            'ae': aen,
+            'alphasense_id': str(sensor_id)}}})
+
+    # Add channel name for traceability
+    result.append({f'{channel}_WE': {'kwargs': {'channel': wen}}})
+    result.append({f'{channel}_AE': {'kwargs': {'channel': aen}}})
+
+    return result
+
+def get_pt_temp(slot, sensor_id):
+    result = list()
+
+    # Get working and auxiliary electrode names
+    pt1000plus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+1]}"
+    pt1000minus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+2]}"
+
+    metric = 'ASPT1000'
+
+    # Simply fill it up
+    std_out(f'{metric} found in blueprint metrics, filling up with hardware info')
+
+    result.append({metric: {
+        'kwargs': {
+            'pt1000plus': pt1000plus,
+            'pt1000minus': pt1000minus,
+            'afe_id': str(sensor_id)}}})
+
+    # Add channel name for traceability
+    result.append({f'PT1000_POS': {'kwargs': {'channel': pt1000plus}}})
+
+    return result
