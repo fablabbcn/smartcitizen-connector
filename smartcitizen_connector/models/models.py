@@ -2,19 +2,21 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel
 
+class Measurement(BaseModel):
+    id: int
+    name: str
+    description: str
+
 class Sensor(BaseModel):
     id: int
     name: str
     description: str
     unit: Optional[str] = None
+    measurement_id: Optional[int] = None
+    measurement: Optional[Measurement] = None
     value: Optional[float] = None
     prev_value: Optional[float] = None
     last_reading_at: Optional[datetime] = None
-
-class Measurement(BaseModel):
-    id: int
-    name: str
-    description: str
 
 class Kit(BaseModel):
     id: int
