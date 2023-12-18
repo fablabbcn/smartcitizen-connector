@@ -7,6 +7,17 @@ class Measurement(BaseModel):
     name: str
     description: str
 
+class Metric(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: Optional[str] = ''
+    module: Optional[str] = "scdata.device.process"
+    function: str
+    unit: Optional[str] = ''
+    post: Optional[bool] = False
+    args: Optional[dict] = None
+    kwargs: Optional[dict] = None
+
 class Sensor(BaseModel):
     id: int
     name: str
@@ -71,7 +82,7 @@ class Postprocessing(BaseModel):
     hardware_url: Optional[str] = None
     forwarding_params: Optional[str] = None
     meta: Optional[str] = None
-    latest_postprocessing: datetime
+    latest_postprocessing: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -86,14 +97,14 @@ class Device(BaseModel):
     description: str
     state: str
     postprocessing: Optional[Postprocessing] = None
-    hardware_info: HardwareInfo
+    hardware_info: Optional[HardwareInfo] = None
     system_tags: List[str]
     user_tags: List[str]
     is_private: bool
     notify_low_battery: bool
     notify_stopped_publishing: bool
-    last_reading_at: datetime
-    created_at: Optional['datetime'] = None
+    last_reading_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
     updated_at: datetime
     owner: Owner
     data: Data
