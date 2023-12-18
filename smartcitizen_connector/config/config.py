@@ -10,7 +10,7 @@ BASE_POSTPROCESSING_URL='https://raw.githubusercontent.com/fablabbcn/smartcitize
 API_SEARCH_URL = API_URL + "search?q="
 
 # Alphasense sensor codes
-as_sensor_codes =  {
+_as_sensor_codes =  {
     '132':  'ASA4_CO',
     '133':  'ASA4_H2S',
     '130':  'ASA4_NO',

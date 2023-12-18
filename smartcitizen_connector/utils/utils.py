@@ -170,7 +170,7 @@ def get_alphasense(slot, sensor_id):
     result = list()
 
     # Alphasense type - AAN 803-04
-    as_type = config.as_sensor_codes[sensor_id[0:3]]
+    as_type = config._as_sensor_codes[sensor_id[0:3]]
     channel = as_type[as_type.index('_')+1:]
     metric = channel
     if channel == 'OX':
@@ -187,6 +187,7 @@ def get_alphasense(slot, sensor_id):
         'kwargs': {
             'we': wen,
             'ae': aen,
+            't': 'EC_SENSOR_TEMP',
             'alphasense_id': str(sensor_id)}}})
 
     # Add channel name for traceability
