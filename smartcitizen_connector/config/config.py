@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 # Output config
 out_level = 'DEBUG'
 out_timestamp = True
@@ -24,3 +26,13 @@ _as_sensor_codes =  {
     '204':  'ASB4_OX',
     '164':  'ASB4_SO2'
 }
+
+_max_retries = 3
+_rety_interval = 10
+_retry_codes = [
+    HTTPStatus.TOO_MANY_REQUESTS,
+    HTTPStatus.INTERNAL_SERVER_ERROR,
+    HTTPStatus.BAD_GATEWAY,
+    HTTPStatus.SERVICE_UNAVAILABLE,
+    HTTPStatus.GATEWAY_TIMEOUT,
+]

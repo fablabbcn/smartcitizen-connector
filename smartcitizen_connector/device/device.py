@@ -1,8 +1,9 @@
-from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, HardwarePostprocessing, Measurement, Postprocessing, HardwareInfo)
+from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, HardwarePostprocessing, Measurement, Metric, Postprocessing, HardwareInfo)
 from smartcitizen_connector.config import *
 from smartcitizen_connector.utils import *
 from typing import Optional, List, Dict
 from requests import get, post, patch
+from requests.exceptions import HTTPError
 from pandas import DataFrame, to_datetime
 from datetime import datetime
 from os import environ
@@ -14,6 +15,7 @@ from tqdm import trange
 from json import dumps, JSONEncoder, loads
 import aiohttp
 import asyncio
+import time
 
 # numpy to json encoder to avoid convertion issues. borrowed from
 # https://stackoverflow.com/questions/50916422/python-typeerror-object-of-type-int64-is-not-json-serializable#50916741
@@ -40,16 +42,30 @@ class SCDevice:
         self.url = f'{DEVICES_URL}{self.id}'
         self.page = f'{FRONTEND_URL}{self.id}'
         self.method = 'async'
-        self._metrics = list()
         r = self.__safe_get__(self.url)
         self.json = TypeAdapter(Device).validate_python(r.json())
         self.__get_timezone__()
         self.__check_postprocessing__()
+        self._filled_properties = list()
+        if self.__check_blueprint__():
+            if self.__get_metrics__():
+                self._filled_properties.append('metrics')
+            self.__make_properties__()
 
     def __safe_get__(self, url):
-        r = get(url)
-        r.raise_for_status()
 
+        for n in range(config._max_retries):
+            try:
+                r = get(url)
+                r.raise_for_status()
+            except HTTPError as exc:
+                code = exc.response.status_code
+
+                if code in config._retry_codes:
+                    time.sleep(config._retry_interval)
+                    continue
+
+                raise
         return r
 
     def __get_timezone__(self) -> str:
@@ -60,6 +76,18 @@ class SCDevice:
         std_out ('Device {} timezone is {}'.format(self.id, self.timezone))
 
         return self.timezone
+
+    def __check_blueprint__(self):
+        if self.blueprint_url is None:
+            std_out('No blueprint url')
+            return False
+        if url_checker(self.blueprint_url):
+            self._blueprint = self.__safe_get__(self.blueprint_url).json()
+            return True
+        else:
+            std_out(f'Invalid blueprint')
+            self._blueprint = None
+            return False
 
     def __check_postprocessing__(self) -> dict:
 
@@ -82,30 +110,49 @@ class SCDevice:
                 r = self.__safe_get__(self.json.postprocessing.hardware_url)
                 self._hardware_postprocessing = TypeAdapter(HardwarePostprocessing).validate_python(r.json())
 
-            # Convert that to metrics now
-            if self._hardware_postprocessing is not None:
-                for version in self._hardware_postprocessing.versions:
-                    if version.from_date is not None:
-                        if version.from_date > self.last_reading_at:
-                            std_out('Postprocessing from_date is later than device last_reading_at. Skipping', 'ERROR')
-                            continue
-
-                    for slot in version.ids:
-                        metrics = None
-                        if slot.startswith('AS'):
-                            metric = get_alphasense(slot, version.ids[slot])
-                        elif slot.startswith('PT'):
-                            metric = get_pt_temp(slot, version.ids[slot])
-                        [self._metrics.append(m) for m in metric]
         else:
             std_out (f'Device {self.id} has no postprocessing information')
+
+    def __get_metrics__(self):
+        self._metrics = TypeAdapter(List[Metric]).validate_python([y for y in self._blueprint['metrics']])
+
+        # Convert that to metrics now
+        if self._hardware_postprocessing is not None:
+            for version in self._hardware_postprocessing.versions:
+                if version.from_date is not None:
+                    if version.from_date > self.last_reading_at:
+                        std_out('Postprocessing from_date is later than device last_reading_at. Skipping', 'ERROR')
+                        continue
+
+                for slot in version.ids:
+                    metrics = None
+                    if slot.startswith('AS'):
+                        metric = get_alphasense(slot, version.ids[slot])
+                    elif slot.startswith('PT'):
+                        metric = get_pt_temp(slot, version.ids[slot])
+                    for m in metric:
+                        for key, value in m.items():
+                            item = find_by_field(self._metrics, key, 'name')
+                            if item is None:
+                                print (f'Item not found, {item[0]}')
+                                continue
+                            item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
+            return True
+
+    def __make_properties__(self):
+        self._properties = dict()
+        for item, value in self._blueprint.items():
+            if item in self._filled_properties:
+                self._properties[item] = self.__getattribute__(item)
+            else:
+                self._properties[item] = value
 
     async def get_datum(self, session, url, headers, sensor_id)->Dict:
         async with session.get(url, headers = headers) as resp:
             data = await resp.json()
 
             if data['readings'] == []:
-                std_out(f'No data in request for sensor: {sensor_id}', 'WARNING')
+                std_out(f"No data in request for sensor: {sensor_id}: {find_by_field(self.json.data.sensors, sensor_id, 'id').name}", 'WARNING')
                 return None
 
             return {sensor_id: data}
@@ -113,22 +160,20 @@ class SCDevice:
     async def get_data(self,
         min_date: Optional[datetime] = None,
         max_date: Optional[datetime] = None,
-        freq: Optional[str] = '1Min',
+        frequency: Optional[str] = '1Min',
         clean_na: Optional[str] = None,
-        resample: Optional[bool] = False,
-        only_unprocessed: Optional[bool] = False)->DataFrame:
+        resample: Optional[bool] = False)->DataFrame:
 
         if 'SC_ADMIN_BEARER' in environ:
             std_out('Admin Bearer found, using it', 'SUCCESS')
-
             headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
         else:
-            headers = None
             std_out('Admin Bearer not found', 'WARNING')
+            headers = None
 
         std_out(f'Requesting data from SC API')
         std_out(f'Device ID: {self.id}')
-        rollup = convert_freq_to_rollup(freq)
+        rollup = convert_freq_to_rollup(frequency)
         std_out(f'Using rollup: {rollup}')
 
         if self.timezone is None:
@@ -143,7 +188,7 @@ class SCDevice:
             std_out (f'Min Date: {min_date}')
         else:
             min_date = localise_date(to_datetime('2001-01-01'), 'UTC')
-            std_out(f"No min_date specified")
+            std_out("No min_date specified")
 
         if max_date is not None:
             max_date = localise_date(to_datetime(max_date), 'UTC')
@@ -152,13 +197,15 @@ class SCDevice:
         # Trim based on actual data available
         if min_date is not None and self.json.last_reading_at is not None:
             if min_date > self.json.last_reading_at:
-                std_out(f'Device request would yield empty data (min_date). Returning', 'WARNING')
-                return None
+                std_out('Device request would yield empty data (min_date). Returning', 'WARNING')
+                self.data = None
+                return self.data
 
         if max_date is not None and self.json.created_at is not None:
             if max_date < self.json.created_at:
-                std_out(f'Device request would yield empty data (max_date). Returning', 'WARNING')
-                return None
+                std_out('Device request would yield empty data (max_date). Returning', 'WARNING')
+                self.data = None
+                return self.data
 
         if max_date is not None and self.json.last_reading_at is not None:
             if max_date > self.json.last_reading_at:
@@ -166,13 +213,14 @@ class SCDevice:
                 max_date = self.json.last_reading_at
 
         if self.json.kit is not None:
-            std_out('Kit ID: {}'.format(self.json.kit.id))
+            std_out(f'Kit ID: {self.json.kit.id}')
         std_out(f'Device timezone: {self.timezone}')
 
         if not self.json.data.sensors:
-            std_out(f'Device is empty')
-            return None
-        else: std_out(f"Sensor IDs: {[(sensor.id, sensor.name) for sensor in self.json.data.sensors]}")
+            std_out('Device is empty')
+            self.data = None
+            return self.data
+        else: std_out(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 
         df = DataFrame()
         std_out(f'Requesting from {min_date} to {max_date}')
@@ -224,7 +272,7 @@ class SCDevice:
                 df_sensor = df_sensor.astype(float, errors='ignore')
                 # Resample
                 if (resample):
-                    df_sensor = df_sensor.resample(freq).mean()
+                    df_sensor = df_sensor.resample(frequency).mean()
                 # Combine in the main df
                 df = df.combine_first(df_sensor)
 
@@ -235,25 +283,37 @@ class SCDevice:
             except:
                 std_out('Problem closing up the API dataframe', 'ERROR')
                 pass
-                return None
+                self.data = None
+                return self.data
 
             std_out(f'Device {self.id} loaded successfully from API', 'SUCCESS')
             return self.data
 
-    async def post_data(self, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2):
+    async def post_data(self, columns = 'sensors', rename = None, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2):
         '''
             POST self.data in the SmartCitizen API
             Parameters
             ----------
+                columns: List or string
+                    'sensors'
+                    If string, either 'sensors' or 'metrics. Empty string is 'sensors' + 'metrics'
+                    If list, list containing column names.
                 clean_na: string, optional
                     'drop'
                     'drop', 'fill'
                 chunk_size: integer
                     chunk size to split resulting pandas DataFrame for posting readings
+                dry_run: boolean
+                    False
+                    Post the payload to the API or just return it
+                max_retries: int
+                    2
+                    Maximum number of retries per chunk
             Returns
             -------
                 True if the data was posted succesfully
         '''
+
         if self.data is None:
             std_out('No data to post, ignoring', 'ERROR')
             return False
@@ -271,17 +331,42 @@ class SCDevice:
         headers = {'Authorization':'Bearer ' + bearer, 'Content-type': 'application/json'}
         post_ok = True
 
+        if columns == 'sensors':
+            _columns = self.sensors
+            # TODO - when a device has been processed, data will be there for metrics
+        elif columns == 'metrics':
+            _columns = self.metrics
+        elif type(columns) is list:
+            _columns = list()
+            for column in columns:
+                item = find_by_field(self.sensors + self.metrics, column, 'name')
+                if item is not None:
+                    _columns.append(item)
+        else:
+            _columns = self.sensors + self.metrics
+
+        if rename is None:
+            std_out('Renaming not required')
+            for column in _columns:
+                _rename[column.name] = column.name
+        else:
+            _rename = rename
+
         async with aiohttp.ClientSession() as session:
 
             tasks = []
-            for sensor in self.json.data.sensors:
-                if sensor.name not in self.data:
-                    std_out(f'No data in {sensor.id}', 'WARNING')
+            for column in _columns:
+                if rename[column.name] not in self.data:
+                    std_out(f'{rename[column.name]} not in data', 'WARNING')
+                    continue
+                if column.id is None:
+                    std_out(f'{column.name} has no id', 'WARNING')
                     continue
                 # Get only post data
-                df = DataFrame(self.data[sensor.name]).copy()
+                df = DataFrame(self.data[rename[column.name]]).copy()
                 # Rename to ID to be able to post
-                df.rename(columns={sensor.name: sensor.id}, inplace = True)
+                std_out(f'Adding {rename[column.name]} ({column.id}) to post list')
+                df.rename(columns={rename[column.name]: column.id}, inplace = True)
                 url = f'{DEVICES_URL}{self.id}/readings'
                 # Append task
                 tasks.append(asyncio.ensure_future(self.post_datum(session, headers, url, df,
@@ -322,7 +407,7 @@ class SCDevice:
         '''
         # Clean df of nans
         df = clean(df, clean_na, how = 'all')
-        std_out(f'Posting columns to {url}')
+        std_out(f'Posting to {url}')
         std_out(f'Sensor ID: {list(df.columns)[0]}')
         df.index.name = 'recorded_at'
 
@@ -419,6 +504,16 @@ class SCDevice:
             return self.json.postprocessing.blueprint_url
         elif url_checker(self.json.postprocessing.hardware_url):
             return self.hardware_postprocessing.blueprint_url
+        else:
+            return None
+
+    @property
+    def blueprint(self):
+        return self._blueprint
+
+    @property
+    def properties(self):
+        return self._properties
 
     @property
     def hardware_postprocessing(self):
@@ -432,6 +527,22 @@ class SCDevice:
     def latest_postprocessing(self):
         return self.postprocessing.latest_postprocessing
 
+    def update_latest_postprocessing(self, date):
+        if self.json.postprocessing.id is not None:
+            # Add latest postprocessing rounded up with
+            # frequency so that we don't end up in
+            # and endless loop processing only the latest data line
+            # (minute vs. second precission of the data)
+            try:
+                self.json.postprocessing.latest_postprocessing = date.to_pydatetime()
+            except:
+                return False
+            else:
+                std_out(f"Updated latest_postprocessing to: {self.latest_postprocessing}")
+                return True
+        std_out('Nothing to update')
+        return True
+
     @property
     def last_reading_at(self):
         return self.json.last_reading_at
@@ -440,6 +551,10 @@ class SCDevice:
     @property
     def metrics(self):
         return self._metrics
+
+    @property
+    def sensors(self):
+        return self.json.data.sensors
 
     # @staticmethod
     # def get_devices(
