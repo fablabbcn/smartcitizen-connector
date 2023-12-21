@@ -109,3 +109,4 @@ class Device(BaseModel):
     owner: Owner
     data: Data
     kit: Optional[Kit] = None
+    device_token: Optional[str] = ''
