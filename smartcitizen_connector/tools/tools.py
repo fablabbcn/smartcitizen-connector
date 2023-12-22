@@ -4,6 +4,9 @@ from datetime import datetime
 from smartcitizen_connector.config import *
 from typing import Optional
 from termcolor import colored
+from requests.exceptions import HTTPError
+from requests import get
+import re
 
 tf = TimezoneFinder()
 
@@ -139,8 +142,6 @@ def std_out(msg: str,
     elif mtype == 'ERROR' and priority>0:
         print(f'[{stamp}] - ' + colored('[ERROR] ', 'red') + msg)
 
-import re
-
 ''' Directly from
 https://www.geeksforgeeks.org/python-check-url-string/
 '''
@@ -171,6 +172,21 @@ def process_headers(headers):
                 elif which == 'first':
                     result['first'] = chunk[0].strip('<').strip('>')
     return result
+
+def safe_get(url):
+    for n in range(config._max_retries):
+        try:
+            r = get(url)
+            r.raise_for_status()
+        except HTTPError as exc:
+            code = exc.response.status_code
+
+            if code in config._retry_codes:
+                time.sleep(config._retry_interval)
+                continue
+
+            raise
+    return r
 
 def get_alphasense(slot, sensor_id):
     result = list()

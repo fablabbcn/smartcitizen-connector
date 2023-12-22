@@ -1,6 +1,6 @@
 from smartcitizen_connector.models import (Sensor, Measurement)
 from smartcitizen_connector.config import *
-from smartcitizen_connector.utils import *
+from smartcitizen_connector.tools import *
 from pydantic import TypeAdapter
 from typing import List
 from requests import get

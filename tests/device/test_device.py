@@ -1,6 +1,6 @@
 import pytest
 from smartcitizen_connector import SCDevice
-from smartcitizen_connector.utils import localise_date
+from smartcitizen_connector.tools import localise_date
 import asyncio
 
 def test_device():

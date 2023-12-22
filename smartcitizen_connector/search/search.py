@@ -1,5 +1,5 @@
 from smartcitizen_connector.config import *
-from smartcitizen_connector.utils import *
+from smartcitizen_connector.tools import *
 from typing import Optional
 from pandas import DataFrame
 from os import environ

@@ -1,6 +1,6 @@
 from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, HardwarePostprocessing, Measurement, Metric, Postprocessing, HardwareInfo)
 from smartcitizen_connector.config import *
-from smartcitizen_connector.utils import *
+from smartcitizen_connector.tools import *
 from typing import Optional, List, Dict
 from requests import get, post, patch
 from requests.exceptions import HTTPError
