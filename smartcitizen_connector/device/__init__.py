@@ -1,1 +1,1 @@
-from .device import SCDevice
+from .device import SCDevice, check_blueprint, check_postprocessing

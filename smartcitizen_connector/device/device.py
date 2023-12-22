@@ -1,9 +1,9 @@
-from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, HardwarePostprocessing, Measurement, Metric, Postprocessing, HardwareInfo)
+from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, \
+    HardwarePostprocessing, Measurement, Metric, Postprocessing, HardwareInfo)
 from smartcitizen_connector.config import *
 from smartcitizen_connector.tools import *
 from typing import Optional, List, Dict
 from requests import get, post, patch
-from requests.exceptions import HTTPError
 from pandas import DataFrame, to_datetime
 from datetime import datetime
 from os import environ
@@ -29,6 +29,62 @@ class NpEncoder(JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
+def check_blueprint(blueprint_url):
+    if blueprint_url is None:
+        std_out('No blueprint url')
+        _blueprint = None
+    if url_checker(blueprint_url):
+        _blueprint = safe_get(blueprint_url).json()
+    else:
+        std_out(f'Invalid blueprint')
+        _blueprint = None
+    return _blueprint
+
+def check_postprocessing(postprocessing):
+    # Postprocessing should be dict or Postprocessing Model
+    if postprocessing is None:
+        return None, None, False
+
+    if type(postprocessing) == dict:
+        _postprocessing = TypeAdapter(Postprocessing).validate_python(postprocessing)
+    else:
+        _postprocessing = postprocessing
+
+    # Check the url in hardware
+    urls = url_checker(_postprocessing.hardware_url)
+    # If URL is empty, try prepending base url from config
+    if not urls:
+        tentative_url = f"{BASE_POSTPROCESSING_URL}hardware/{_postprocessing.hardware_url}.json"
+    else:
+        if len(urls)>1: std_out('URLs for postprocessing recipe are more than one, trying first', 'WARNING')
+        tentative_url = urls[0]
+
+    _hardware_url = tentative_url
+    std_out (f'Device has postprocessing information:\n{_postprocessing}')
+
+    _ok = True
+    # Make hardware postprocessing
+    if url_checker(_hardware_url):
+        try:
+            r = safe_get(_hardware_url)
+        except:
+            _ok = False
+            _hardware_postprocessing = None
+            pass
+    else:
+        _hardware_postprocessing = None
+        _ok = False
+
+    if _ok:
+        try:
+            _hardware_postprocessing = TypeAdapter(HardwarePostprocessing).validate_python(r.json())
+        except:
+            _ok = False
+            _hardware_postprocessing = None
+            pass
+
+    return _hardware_url, _hardware_postprocessing, _ok
+
 class SCDevice:
     id: int
     url: str
@@ -42,7 +98,7 @@ class SCDevice:
         self.url = f'{DEVICES_URL}{self.id}'
         self.page = f'{FRONTEND_URL}{self.id}'
         self.method = 'async'
-        r = self.__safe_get__(self.url)
+        r = safe_get(self.url)
         self.json = TypeAdapter(Device).validate_python(r.json())
         self.__get_timezone__()
         self.__check_postprocessing__()
@@ -51,22 +107,6 @@ class SCDevice:
             if self.__get_metrics__():
                 self._filled_properties.append('metrics')
             self.__make_properties__()
-
-    def __safe_get__(self, url):
-
-        for n in range(config._max_retries):
-            try:
-                r = get(url)
-                r.raise_for_status()
-            except HTTPError as exc:
-                code = exc.response.status_code
-
-                if code in config._retry_codes:
-                    time.sleep(config._retry_interval)
-                    continue
-
-                raise
-        return r
 
     def __get_timezone__(self) -> str:
 
@@ -78,40 +118,18 @@ class SCDevice:
         return self.timezone
 
     def __check_blueprint__(self):
-        if self.blueprint_url is None:
-            std_out('No blueprint url')
-            return False
-        if url_checker(self.blueprint_url):
-            self._blueprint = self.__safe_get__(self.blueprint_url).json()
-            return True
-        else:
-            std_out(f'Invalid blueprint')
-            self._blueprint = None
-            return False
+        self._blueprint = check_blueprint(self.blueprint_url)
 
-    def __check_postprocessing__(self) -> dict:
+        return self._blueprint is not None
 
+    def __check_postprocessing__(self):
+        std_out(f'Checking postprocessing of {self.id}')
         if self.json.postprocessing is not None:
-            # Check the url in hardware
-            urls = url_checker(self.json.postprocessing.hardware_url)
-            # If URL is empty, try prepending base url from config
-            if not urls:
-                tentative_url = f"{BASE_POSTPROCESSING_URL}hardware/{self.json.postprocessing.hardware_url}.json"
-            else:
-                if len(urls)>1: std_out('URLs for postprocessing recipe are more than one, trying first', 'WARNING')
-                tentative_url = urls[0]
-
-            self.json.postprocessing.hardware_url = tentative_url
-
-            std_out (f'Device {self.id} has postprocessing information:\n{self.json.postprocessing}')
-
-            # Make hardware postprocessing
-            if url_checker(self.json.postprocessing.hardware_url):
-                r = self.__safe_get__(self.json.postprocessing.hardware_url)
-                self._hardware_postprocessing = TypeAdapter(HardwarePostprocessing).validate_python(r.json())
-
+            self.json.postprocessing.hardware_url, self._hardware_postprocessing, valid = check_postprocessing(self.json.postprocessing)
         else:
-            std_out (f'Device {self.id} has no postprocessing information')
+            std_out ('No postprocessing information')
+        if valid:
+            std_out('Processing information is valid')
 
     def __get_metrics__(self):
         self._metrics = TypeAdapter(List[Metric]).validate_python([y for y in self._blueprint['metrics']])
