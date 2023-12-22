@@ -80,7 +80,7 @@ class Postprocessing(BaseModel):
     id: int
     blueprint_url: Optional[str] = None
     hardware_url: Optional[str] = None
-    forwarding_params: Optional[str] = None
+    forwarding_params: Optional[int] = None
     meta: Optional[str] = None
     latest_postprocessing: Optional[datetime] = None
     created_at: datetime
