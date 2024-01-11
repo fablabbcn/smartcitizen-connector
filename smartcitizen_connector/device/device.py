@@ -32,11 +32,11 @@ class NpEncoder(JSONEncoder):
 def check_blueprint(blueprint_url):
     if blueprint_url is None:
         std_out('No blueprint url')
-        _blueprint = None
+        return None
     if url_checker(blueprint_url):
         _blueprint = safe_get(blueprint_url).json()
     else:
-        std_out(f'Invalid blueprint')
+        std_out(f'No valid blueprint in url')
         _blueprint = None
     return _blueprint
 
@@ -92,6 +92,7 @@ class SCDevice:
     timezone: str
     json: Device
     data: DataFrame
+    metrics: List[Metric] = []
 
     def __init__(self, id):
         self.id = id
@@ -103,8 +104,10 @@ class SCDevice:
         self.__get_timezone__()
         self.__check_postprocessing__()
         self._filled_properties = list()
+        self._properties = dict()
         if self.__check_blueprint__():
             if self.__get_metrics__():
+                # TODO Improve how this happens automatically
                 self._filled_properties.append('metrics')
             self.__make_properties__()
 
@@ -127,9 +130,8 @@ class SCDevice:
         if self.json.postprocessing is not None:
             self.json.postprocessing.hardware_url, self._hardware_postprocessing, valid = check_postprocessing(self.json.postprocessing)
         else:
+            self._hardware_postprocessing = None
             std_out ('No postprocessing information')
-        if valid:
-            std_out('Processing information is valid')
 
     def __get_metrics__(self):
         self._metrics = TypeAdapter(List[Metric]).validate_python([y for y in self._blueprint['metrics']])
@@ -158,7 +160,6 @@ class SCDevice:
             return True
 
     def __make_properties__(self):
-        self._properties = dict()
         for item, value in self._blueprint.items():
             if item in self._filled_properties:
                 self._properties[item] = self.__getattribute__(item)
@@ -350,18 +351,18 @@ class SCDevice:
         post_ok = True
 
         if columns == 'sensors':
-            _columns = self.sensors
+            _columns = self.json.data.sensors
             # TODO - when a device has been processed, data will be there for metrics
         elif columns == 'metrics':
-            _columns = self.metrics
+            _columns = self._metrics
         elif type(columns) is list:
             _columns = list()
             for column in columns:
-                item = find_by_field(self.sensors + self.metrics, column, 'name')
+                item = find_by_field(self.json.data.sensors + self._metrics, column, 'name')
                 if item is not None:
                     _columns.append(item)
         else:
-            _columns = self.sensors + self.metrics
+            _columns = self.json.data.sensors + self._metrics
 
         if rename is None:
             std_out('Renaming not required')
@@ -518,10 +519,12 @@ class SCDevice:
 
     @property
     def blueprint_url(self):
+        if self.json.postprocessing is None:
+            return None
         if url_checker(self.json.postprocessing.blueprint_url):
             return self.json.postprocessing.blueprint_url
         elif url_checker(self.json.postprocessing.hardware_url):
-            return self.hardware_postprocessing.blueprint_url
+            return self._hardware_postprocessing.blueprint_url
         else:
             return None
 
@@ -534,16 +537,28 @@ class SCDevice:
         return self._properties
 
     @property
+    def metrics(self):
+        return [metric.model_dump() for metric in self._metrics]
+
+    @property
+    def sensors(self):
+        return [sensor.model_dump() for sensor in self.json.data.sensors]
+
+    @property
     def hardware_postprocessing(self):
-        return self._hardware_postprocessing
+        if self._hardware_postprocessing is None:
+            return None
+        return self._hardware_postprocessing.model_dump()
 
     @property
     def postprocessing(self):
-        return self.json.postprocessing
+        if self.json.postprocessing is None:
+            return None
+        return self.json.postprocessing.model_dump()
 
     @property
     def latest_postprocessing(self):
-        return self.postprocessing.latest_postprocessing
+        return self.json.postprocessing.latest_postprocessing
 
     def update_latest_postprocessing(self, date):
         if self.json.postprocessing.id is not None:
@@ -564,15 +579,6 @@ class SCDevice:
     @property
     def last_reading_at(self):
         return self.json.last_reading_at
-
-    # TODO Rethink and make into a model?
-    @property
-    def metrics(self):
-        return self._metrics
-
-    @property
-    def sensors(self):
-        return self.json.data.sensors
 
     # @staticmethod
     # def get_devices(
