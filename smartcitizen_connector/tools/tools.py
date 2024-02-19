@@ -7,6 +7,8 @@ from termcolor import colored
 from requests.exceptions import HTTPError
 from requests import get
 import re
+import logging
+import sys
 
 tf = TimezoneFinder()
 
@@ -109,43 +111,42 @@ def localise_date(date, timezone, tzaware=True):
 
     return result_date
 
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
+class CutsomLoggingFormatter(logging.Formatter):
 
-def enablePrint():
-    sys.stdout = sys.__stdout__
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format_min = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
+    format_deb = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
 
-def std_out(msg: str,
-    mtype: Optional[str] = None,
-    force: Optional[bool] = False
-    ):
+    FORMATS = {
+        logging.DEBUG: grey + format_min + reset,
+        logging.INFO: grey + format_min + reset,
+        logging.WARNING: yellow + format_min + reset,
+        logging.ERROR: red + format_deb + reset,
+        logging.CRITICAL: bold_red + format_deb + reset
+    }
 
-    if out_timestamp == True:
-        stamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    else:
-        stamp = ''
-    # Output levels:
-    # 'QUIET': nothing,
-    # 'NORMAL': warn, err
-    # 'DEBUG': info, warn, err, success
-    if force == True: priority = 2
-    elif out_level == 'QUIET': priority = 0
-    elif out_level == 'NORMAL': priority = 1
-    elif out_level == 'DEBUG': priority = 2
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
 
-    if mtype is None and priority>1:
-        print(f'[{stamp}] - ' + '[INFO] ' + msg)
-    elif mtype == 'SUCCESS' and priority>0:
-        print(f'[{stamp}] - ' + colored('[SUCCESS] ', 'green') + msg)
-    elif mtype == 'WARNING' and priority>0:
-        print(f'[{stamp}] - ' + colored('[WARNING] ', 'yellow') + msg)
-    elif mtype == 'ERROR' and priority>0:
-        print(f'[{stamp}] - ' + colored('[ERROR] ', 'red') + msg)
+logger = logging.getLogger('smartcitizen_connector')
+logger.setLevel(config.log_level)
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(config.log_level)
+ch.setFormatter(CutsomLoggingFormatter())
+logger.addHandler(ch)
+
+def set_logger_level(level=logging.DEBUG):
+    logger.setLevel(level)
 
 ''' Directly from
 https://www.geeksforgeeks.org/python-check-url-string/
 '''
-
 def url_checker(string):
     if string is not None:
         regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
@@ -203,7 +204,7 @@ def get_alphasense(slot, sensor_id):
     aen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+2]}"
 
     # Simply fill it up
-    std_out(f'{metric} found in blueprint metrics, filling up with hardware info')
+    logger.info(f'{metric} found in blueprint metrics, filling up with hardware info')
 
     result.append({metric: {
         'kwargs': {
@@ -228,7 +229,7 @@ def get_pt_temp(slot, sensor_id):
     metric = 'ASPT1000'
 
     # Simply fill it up
-    std_out(f'{metric} found in blueprint metrics, filling up with hardware info')
+    logger.info(f'{metric} found in blueprint metrics, filling up with hardware info')
 
     result.append({metric: {
         'kwargs': {
@@ -245,7 +246,7 @@ def find_by_field(models, value, field):
     try:
         item = next(model for _, model in enumerate(models) if model.__getattribute__(field) == value)
     except StopIteration:
-        std_out(f'Column {field} not in models')
+        logger.exception(f'Column {field} not in models')
         pass
     else:
         return item

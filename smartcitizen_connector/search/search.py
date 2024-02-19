@@ -1,4 +1,4 @@
-from smartcitizen_connector.config import *
+from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import *
 from typing import Optional
 from pandas import DataFrame
@@ -21,16 +21,16 @@ def global_search(value: Optional[str] = None) -> DataFrame:
         A list of kit IDs that comply with the requirements, or the full df, depending on full.
     """
     if 'SC_ADMIN_BEARER' in environ:
-        std_out('Admin Bearer found, using it', 'SUCCESS')
+        logger.info('Admin Bearer found, using it')
         headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
     else:
         headers = None
-        std_out('Admin Bearer not found', 'INFO')
+        logger.info('Admin Bearer not found')
 
     # Value check
-    if value is None: std_out(f'Value needs a value, {value} supplied', 'ERROR'); return None
+    if value is None: logger.error(f'Value needs a value, {value} supplied'); return None
 
-    url = API_SEARCH_URL  + f'{value}'
+    url = config.API_SEARCH_URL  + f'{value}'
 
     df = DataFrame()
     isn = True
@@ -78,25 +78,25 @@ def search_by_query(endpoint: Optional[str] = 'devices',
     """
 
     if 'SC_ADMIN_BEARER' in environ:
-        std_out('Admin Bearer found, using it', 'SUCCESS')
+        logger.info('Admin Bearer found, using it')
         headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
     else:
         headers = None
-        std_out('Admin Bearer not found', 'INFO')
+        logger.info('Admin Bearer not found')
 
     # Value check
     if value is None:
-        std_out(f'Value needs a value, {value} supplied', 'ERROR')
+        logger.error(f'Value needs a value, {value} supplied')
         return None
 
     if value == 'null' or value == 'not_null':
-         url = f'{API_URL}{endpoint}/?q[{key}_{value}]=1'
+         url = f'{config.API_URL}{endpoint}/?q[{key}_{value}]=1'
     else:
-         url = f'{API_URL}{endpoint}/?q[{key}_{search_matcher}]={value}'
+         url = f'{config.API_URL}{endpoint}/?q[{key}_{search_matcher}]={value}'
 
     df = DataFrame()
     isn = True
-    std_out(f'Getting: {url}')
+    logger.info(f'Getting: {url}')
     while isn:
         r = get(url, headers = headers)
         r.raise_for_status()
