@@ -6,7 +6,7 @@ import asyncio
 def test_device():
     id = 16838
     frequency = '1Min'
-    resample = False
+    resample = True
     uuid = "80e684e5-359f-4755-aec9-30fc0c84415f"
     min_date = '2022-09-10T00:00:00Z'
     max_date = None
@@ -22,7 +22,7 @@ def test_device():
 
     d0 = d.data.index[0].tz_convert('UTC').strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    assert d.json.id == id, resp.text
-    assert d.data is not None, resp.text
-    assert d.json.uuid == uuid, resp.text
-    assert d0 == min_date, resp.text
+    assert d.json.id == id
+    assert d.data is not None
+    assert d.json.uuid == uuid
+    assert d0 == min_date
