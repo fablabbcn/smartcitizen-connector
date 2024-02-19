@@ -1,7 +1,5 @@
-from smartcitizen_connector.models import (Sensor, Kit, Owner, Location, Data, Device, \
-    HardwarePostprocessing, Measurement, Metric, Postprocessing, HardwareInfo)
-from smartcitizen_connector.config import *
-from smartcitizen_connector.tools import *
+from smartcitizen_connector._config import config
+from smartcitizen_connector.tools import logger, safe_get, tf, \
 from typing import Optional, List, Dict
 from requests import get, post, patch
 from pandas import DataFrame, to_datetime

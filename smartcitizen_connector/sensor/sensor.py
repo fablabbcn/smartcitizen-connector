@@ -1,5 +1,5 @@
 from smartcitizen_connector.models import (Sensor, Measurement)
-from smartcitizen_connector.config import *
+from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import *
 from pydantic import TypeAdapter
 from typing import List
@@ -13,7 +13,7 @@ class SCSensor:
 
     def __init__(self, id):
         self.id = id
-        self.url = f'{SENSORS_URL}{self.id}'
+        self.url = f'{config.SENSORS_URL}{self.id}'
         self.method = 'async'
         r = self.__safe_get__(self.url)
         self.json = TypeAdapter(Sensor).validate_python(r.json())
@@ -27,7 +27,7 @@ class SCSensor:
 def get_sensors():
     isn = True
     result = list()
-    url = SENSORS_URL
+    url = config.SENSORS_URL
     while isn:
         r = get(url)
         r.raise_for_status()
