@@ -241,7 +241,7 @@ class SCDevice:
 
         if self.timezone is None:
             logger.warning('Device does not have timezone set, skipping')
-            return None
+            return self.data
 
         # Check start date and end date
         # Converting to UTC by passing None
@@ -261,13 +261,11 @@ class SCDevice:
         if min_date is not None and self.json.last_reading_at is not None:
             if min_date > self.json.last_reading_at:
                 logger.warning('Device request would yield empty data (min_date). Returning')
-                self.data = None
                 return self.data
 
         if max_date is not None and self.json.created_at is not None:
             if max_date < self.json.created_at:
                 logger.warning('Device request would yield empty data (max_date). Returning')
-                self.data = None
                 return self.data
 
         if max_date is not None and self.json.last_reading_at is not None:
@@ -281,7 +279,6 @@ class SCDevice:
 
         if not self.json.data.sensors:
             logger.info('Device is empty')
-            self.data = None
             return self.data
         else: logger.info(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 
@@ -321,8 +318,6 @@ class SCDevice:
         except:
             logger.error('Problem closing up the API dataframe')
             pass
-            self.data = None
-            return self.data
 
         logger.info(f'Device {self.id} loaded successfully from API')
         return self.data
