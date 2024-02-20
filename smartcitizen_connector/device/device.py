@@ -96,13 +96,13 @@ class SCDevice:
     timezone: str
     json: Device
     data: DataFrame
-    metrics: List[Metric] = []
 
     def __init__(self, id, check_postprocessing=True):
         self.id = id
         self.url = f'{config.DEVICES_URL}{self.id}'
         self.page = f'{config.FRONTEND_URL}{self.id}'
         self.method = 'async'
+        self._metrics: List[Metric] = []
         self.__load__()
         self.__get_timezone__()
         if check_postprocessing:
