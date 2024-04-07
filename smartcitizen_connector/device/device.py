@@ -264,12 +264,12 @@ class SCDevice:
         # Trim based on actual data available
         if min_date is not None and self.json.last_reading_at is not None:
             if min_date > self.json.last_reading_at:
-                logger.warning('Device request would yield empty data (min_date). Returning')
+                logger.warning(f'Device {self.id} request would yield empty data (min_date). Returning')
                 return self.data
 
         if max_date is not None and self.json.created_at is not None:
             if max_date < self.json.created_at:
-                logger.warning('Device request would yield empty data (max_date). Returning')
+                logger.warning(f'Device {self.id} request would yield empty data (max_date). Returning')
                 return self.data
 
         if max_date is not None and self.json.last_reading_at is not None:
@@ -277,17 +277,15 @@ class SCDevice:
                 logger.warning('Trimming max_date to last reading')
                 max_date = self.json.last_reading_at
 
-        if self.json.kit is not None:
-            logger.info(f'Kit ID: {self.json.kit.id}')
-        logger.info(f'Device timezone: {self.timezone}')
+        logger.info(f'Device {self.id} timezone: {self.timezone}')
 
         if not self.json.data.sensors:
-            logger.info('Device is empty')
+            logger.info(f'Device {self.id} is empty', 'WARNING')
             return self.data
         else: logger.info(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 
         df = DataFrame()
-        logger.info(f'Requesting from {min_date} to {max_date}')
+        logger.info(f'Requesting device {self.id} from {min_date} to {max_date}')
 
         semaphore = asyncio.Semaphore(config._max_concurrent_requests)
         async with aiohttp.ClientSession() as session:
@@ -320,7 +318,7 @@ class SCDevice:
             df = clean(df, clean_na, how = 'all')
             self.data = df
         except:
-            logger.error('Problem closing up the API dataframe')
+            logger.error(f'Problem closing up the API dataframe for {self.id}')
             pass
 
         logger.info(f'Device {self.id} loaded successfully from API')
