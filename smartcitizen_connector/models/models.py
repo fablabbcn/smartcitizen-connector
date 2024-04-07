@@ -28,6 +28,8 @@ class Sensor(BaseModel):
     value: Optional[float] = None
     prev_value: Optional[float] = None
     last_reading_at: Optional[datetime] = None
+    tags: Optional[List[str]] = []
+    default_key: Optional[str] = []
 
 class Kit(BaseModel):
     id: int
