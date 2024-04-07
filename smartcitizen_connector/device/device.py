@@ -125,8 +125,8 @@ class SCDevice:
 
     def __get_timezone__(self) -> str:
 
-        if self.json.data.location.latitude is not None and self.json.data.location.longitude is not None:
-            self.timezone = tf.timezone_at(lng=self.json.data.location.longitude, lat=self.json.data.location.latitude)
+        if self.json.location.latitude is not None and self.json.location.longitude is not None:
+            self.timezone = tf.timezone_at(lng=self.json.location.longitude, lat=self.json.location.latitude)
 
         logger.info('Device {} timezone is {}'.format(self.id, self.timezone))
 

@@ -87,7 +87,6 @@ class Postprocessing(BaseModel):
     updated_at: datetime
 
 class Data(BaseModel):
-    location: Optional[Location]= None
     sensors: Optional[List[Sensor]] = None
 
 class Device(BaseModel):
@@ -108,5 +107,6 @@ class Device(BaseModel):
     updated_at: datetime
     owner: Owner
     data: Data
+    location: Optional[Location]= None
     kit: Optional[Kit] = None
     device_token: Optional[str] = ''
