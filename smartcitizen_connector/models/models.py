@@ -91,6 +91,10 @@ class Postprocessing(BaseModel):
 class Data(BaseModel):
     sensors: Optional[List[Sensor]] = None
 
+class Notifications(BaseModel):
+    low_battery: bool
+    stopped_publishing: bool
+
 class Device(BaseModel):
     id: int
     uuid: str
@@ -102,8 +106,7 @@ class Device(BaseModel):
     system_tags: List[str]
     user_tags: List[str]
     is_private: bool
-    notify_low_battery: bool
-    notify_stopped_publishing: bool
+    notify: Notifications
     last_reading_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: datetime
