@@ -201,7 +201,10 @@ class SCDevice:
                 # Set index
                 df_sensor = DataFrame(datum['readings']).set_index(0)
                 # Set columns
-                df_sensor.columns = [sensor_name]
+                if rename:
+                    df_sensor.columns = [sensor_name]
+                else:
+                    df_sensor.columns = [str(sensor_id)]
                 # Localise index
                 df_sensor.index = localise_date(df_sensor.index, self.timezone)
                 # Sort it just in case
@@ -223,7 +226,8 @@ class SCDevice:
         max_date: Optional[datetime] = None,
         frequency: Optional[str] = '1Min',
         clean_na: Optional[str] = None,
-        resample: Optional[bool] = False)->DataFrame:
+        resample: Optional[bool] = False,
+        rename: Optional[bool] = True)->DataFrame:
 
         if 'SC_ADMIN_BEARER' in environ:
             logger.info('Admin Bearer found, using it')
