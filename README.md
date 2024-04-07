@@ -1,6 +1,8 @@
+[![Python application](https://github.com/fablabbcn/smartcitizen-connector/actions/workflows/python-app.yml/badge.svg)](https://github.com/fablabbcn/smartcitizen-connector/actions/workflows/python-app.yml)
+
 # Smart Citizen Connector
 
-This is a simple connector written in `python` to get data from the Smart Citizen API. It is only providing this functionality, to be used in conjunction with other scripts, and it does not aim to replace [scdata](https://github.com/fablabbcn/smartcitizen-data), which is a much more advanced data analysis framework.
+This is a connector written in `python` to get and post data from the Smart Citizen API. It can be used in conjunction with other scripts such as [scdata](https://github.com/fablabbcn/smartcitizen-data).
 
 ## Installation
 
