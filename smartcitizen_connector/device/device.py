@@ -178,7 +178,7 @@ class SCDevice:
             else:
                 self._properties[item] = value
 
-    async def get_datum(self, semaphore, session, url, headers, sensor_id, resample, frequency)->Dict:
+    async def get_datum(self, semaphore, session, url, headers, sensor_id, resample, frequency, rename)->Dict:
         async with semaphore:
             retry_client = RetryClient(client_session=session)
             async with retry_client.get(url, headers = headers) as resp:
@@ -305,7 +305,7 @@ class SCDevice:
                 url += f'&sensor_id={sensor.id}'
                 url += '&function=avg'
 
-                tasks.append(asyncio.ensure_future(self.get_datum(semaphore, session, url, headers, sensor.id, resample, frequency)))
+                tasks.append(asyncio.ensure_future(self.get_datum(semaphore, session, url, headers, sensor.id, resample, frequency, rename)))
 
             dfs_sensor = await asyncio.gather(*tasks)
 
