@@ -90,18 +90,13 @@ def check_postprocessing(postprocessing):
     return _hardware_url, _hardware_postprocessing, _ok
 
 class SCDevice:
-    id: int
-    url: str
-    page: str
-    timezone: str
-    json: Device
-    data: DataFrame
 
     def __init__(self, id, check_postprocessing=True):
         self.id = id
         self.url = f'{config.DEVICES_URL}{self.id}'
         self.page = f'{config.FRONTEND_URL}{self.id}'
         self.method = 'async'
+        self.data = DataFrame()
         self._metrics: List[Metric] = []
         self.__load__()
         self.__get_timezone__()
