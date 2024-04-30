@@ -91,8 +91,14 @@ def check_postprocessing(postprocessing):
 
 class SCDevice:
 
-    def __init__(self, id, check_postprocessing=True):
-        self.id = id
+    def __init__(self, id = None, params = None, check_postprocessing=True):
+        if id is not None:
+            self.id = id
+        elif params is not None:
+            self.id = params.id
+        else:
+            raise ValueError("Need at least id or params.id")
+        self.params = params
         self.url = f'{config.DEVICES_URL}{self.id}'
         self.page = f'{config.FRONTEND_URL}{self.id}'
         self.method = 'async'
@@ -573,10 +579,13 @@ class SCDevice:
 
     @property
     def latest_postprocessing(self):
-        return self.json.postprocessing.latest_postprocessing
+        if self.json.postprocessing is not None:
+            return self.json.postprocessing.latest_postprocessing
+        else:
+            return None
 
     def update_latest_postprocessing(self, date):
-        if self.json.postprocessing.id is not None:
+        if self.json.postprocessing is not None:
             # Add latest postprocessing rounded up with
             # frequency so that we don't end up in
             # and endless loop processing only the latest data line
