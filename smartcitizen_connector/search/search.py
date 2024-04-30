@@ -1,6 +1,6 @@
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import *
-from typing import Optional
+from typing import Optional, List, Dict
 from pandas import DataFrame
 from os import environ
 from requests import get
@@ -50,9 +50,10 @@ def global_search(value: Optional[str] = None) -> DataFrame:
     return df
 
 def search_by_query(endpoint: Optional[str] = 'devices',
-    key: Optional[str] = '',
-    search_matcher: Optional[str] = '',
-    value: Optional[str] = None) -> DataFrame:
+    search_items: List[Dict] = None) -> DataFrame:
+        # key: Optional[str] = '',
+        # search_matcher: Optional[str] = '',
+        # value: Optional[str] = None]) -> DataFrame:
     """
     Gets devices from Smart Citizen API based on ransack parameters
     Basic query documentation: https://developer.smartcitizen.me/#basic-searching
@@ -61,17 +62,19 @@ def search_by_query(endpoint: Optional[str] = 'devices',
         endpoint: string
             'devices'
             Endpoint to perform the query at (see docs)
-        key: string
-            ''
-            Query key according to the basic query documentation.
-        search_matcher: string
-            ''
-            Ransack search_matcher:
-            https://activerecord-hackery.github.io/ransack/getting-started/search-matches/
-        value: string
-            None
-            Query to fit
-            For null, not_null values, use 'null' or 'not_null'. In this case ignores search_matcher
+        search_items: List[Dict]
+            Required keys for each dictionary below:
+            key: string
+                ''
+                Query key according to the basic query documentation.
+            search_matcher: string
+                ''
+                Ransack search_matcher:
+                https://activerecord-hackery.github.io/ransack/getting-started/search-matches/
+            value: string
+                None
+                Query to fit
+                For null, not_null values, use 'null' or 'not_null'. In this case ignores search_matcher
     Returns
     -------
         DataFrame with devices
@@ -84,15 +87,28 @@ def search_by_query(endpoint: Optional[str] = 'devices',
         headers = None
         logger.info('Admin Bearer not found')
 
-    # Value check
-    if value is None:
-        logger.error(f'Value needs a value, {value} supplied')
-        return None
+    url = f'{config.API_URL}{endpoint}/?'
+    url_queries = 0
+    for search_item in search_items:
+        # Value check
+        key = search_item['key']
+        value = search_item['value']
 
-    if value == 'null' or value == 'not_null':
-         url = f'{config.API_URL}{endpoint}/?q[{key}_{value}]=1'
-    else:
-         url = f'{config.API_URL}{endpoint}/?q[{key}_{search_matcher}]={value}'
+        if value is None:
+            logger.error(f'Value needs a value, {value} supplied')
+            return None
+
+        if url_queries:
+            url += '&'
+
+        if value == 'null' or value == 'not_null':
+            url += f'q[{key}_{value}]=1'
+        else:
+            search_matcher = search_item['search_matcher']
+            url += f'q[{key}_{search_matcher}]={value}'
+
+        url_queries += 1
+
 
     df = DataFrame()
     isn = True
