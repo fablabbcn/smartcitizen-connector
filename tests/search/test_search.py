@@ -9,10 +9,29 @@ def test_search():
 
     raised_error = False
     with pytest.raises(HTTPError) as exc_info:
-        search_by_query(endpoint = 'devices', key="device_token", search_matcher="eq", value="eeb370")
+        search_by_query(
+            endpoint = 'devices',
+            search_items=[{
+                'key': "device_token",
+                'search_matcher': "eq",
+                'value':"eeb370"}
+                ]
+            )
 
-    d = search_by_query(endpoint = 'devices', key="name", search_matcher="eq", value="PlatformTest MQTT")
-    u = search_by_query(endpoint = 'users', key="username", search_matcher="eq", value="team")
+    d = search_by_query(endpoint = 'devices',
+        search_items=[{
+            'key': "name",
+            'search_matcher': "eq",
+            'value': "PlatformTest MQTT"}
+            ]
+        )
+    u = search_by_query(endpoint = 'users',
+        search_items=[{
+            'key': "username",
+            'search_matcher': "eq",
+            'value': "team"}
+            ]
+        )
 
     assert u.uuid.values[0] == u_uuid, resp.text
     assert d.uuid.values[0] == d_uuid, resp.text
