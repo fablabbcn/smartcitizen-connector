@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 
 class Measurement(BaseModel):
@@ -79,14 +79,14 @@ class HardwarePostprocessing(BaseModel):
     forwarding: Optional[str] = None
 
 class Postprocessing(BaseModel):
-    id: int
+    id: Optional[int] = None
     blueprint_url: Optional[str] = None
     hardware_url: Optional[str] = None
     forwarding_params: Optional[int] = None
     meta: Optional[str] = None
     latest_postprocessing: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class Data(BaseModel):
     sensors: Optional[List[Sensor]] = None
