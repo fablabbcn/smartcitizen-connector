@@ -281,3 +281,6 @@ def dict_fmerge(base_dct, merge_dct, add_keys=True):
     })
 
     return rtn_dct
+
+def dict_unpack(row, column, key):
+    return row[column][key]
