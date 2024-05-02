@@ -12,18 +12,6 @@ import sys
 
 tf = TimezoneFinder()
 
-# Convertion between SC and Pandas API rollups
-rollup_table = {
-    "y":   "years",
-    "M":   "months",
-    "w":   "weeks",
-    "d":   "days",
-    "h":   "hours",
-    "m":   "minutes",
-    "s":   "seconds",
-    "ms":  "milliseconds"
-}
-
 freq_2_rollup_lut = (
     ['A', 'y'],
     ['M', 'M'],
@@ -65,6 +53,7 @@ def convert_freq_to_rollup(freq):
     -------
         rollup: str rollup from SC
     """
+    rollup_unit = None
     # Convert freq from pandas to SC API's
     for index, letter in enumerate(freq):
         try:
@@ -81,6 +70,8 @@ def convert_freq_to_rollup(freq):
             rollup_unit = item[1]
             break
 
+    if rollup_unit is None:
+        return None
     rollup = rollup_value + rollup_unit
     return rollup
 
