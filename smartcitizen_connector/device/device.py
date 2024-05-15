@@ -233,8 +233,12 @@ class SCDevice:
         if 'SC_ADMIN_BEARER' in environ:
             logger.info('Admin Bearer found, using it')
             headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
+        elif 'SC_BEARER' in environ:
+            logger.info('Bearer found in environment, using it.')
+            # TODO make this explicit
+            headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
         else:
-            logger.warning('Admin Bearer not found')
+            logger.warning('No Bearer not found, you might get throttled!')
             headers = None
 
         logger.info(f'Make sure we are up to date')

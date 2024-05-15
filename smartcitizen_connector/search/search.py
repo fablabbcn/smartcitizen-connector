@@ -23,9 +23,13 @@ def global_search(value: Optional[str] = None) -> DataFrame:
     if 'SC_ADMIN_BEARER' in environ:
         logger.info('Admin Bearer found, using it')
         headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
+    elif 'SC_BEARER' in environ:
+        logger.info('Bearer found in environment, using it.')
+        # TODO make this explicit
+        headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
     else:
+        logger.warning('No Bearer not found, you might get throttled!')
         headers = None
-        logger.info('Admin Bearer not found')
 
     # Value check
     if value is None: logger.error(f'Value needs a value, {value} supplied'); return None
