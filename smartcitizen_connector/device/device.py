@@ -58,7 +58,7 @@ def check_postprocessing(postprocessing):
     if not urls:
         tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{_postprocessing.hardware_url}.json"
     else:
-        if len(urls)>1: logger('URLs for postprocessing recipe are more than one, trying first', 'WARNING')
+        if len(urls)>1: logger.warning('URLs for postprocessing recipe are more than one, trying first')
         tentative_url = urls[0]
 
     logger.info(f'Device has postprocessing information:\n{_postprocessing}')
@@ -285,7 +285,7 @@ class SCDevice:
         logger.info(f'Device {self.id} timezone: {self.timezone}')
 
         if not self.json.data.sensors:
-            logger.info(f'Device {self.id} is empty', 'WARNING')
+            logger.info(f'Device {self.id} is empty')
             return self.data
         else: logger.info(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 

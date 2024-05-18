@@ -9,6 +9,7 @@ from requests import get
 import re
 import logging
 import sys
+import time
 
 tf = TimezoneFinder()
 
