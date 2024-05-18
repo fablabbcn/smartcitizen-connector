@@ -16,7 +16,7 @@ PROJECT_URLS = {
 
 setup(
     name="smartcitizen-connector",
-    version="1.0.5",
+    version="1.0.6",
     description="Python connector to download information collected in SmartCitizen API",
     author="oscgonfer",
     license="GNU General Public License v3",
