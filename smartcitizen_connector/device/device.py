@@ -130,6 +130,7 @@ class SCDevice:
                 self.__make_properties__()
         else:
             self._metrics = []
+
         logger.info(f'Device {self.json.id} initialized')
 
     def __load__(self):
@@ -544,6 +545,22 @@ class SCDevice:
 
         return False
 
+    def update_latest_postprocessing(self, date):
+        if self.json.postprocessing is not None:
+            # Add latest postprocessing rounded up with
+            # frequency so that we don't end up in
+            # and endless loop processing only the latest data line
+            # (minute vs. second precission of the data)
+            try:
+                self.json.postprocessing.latest_postprocessing = date.to_pydatetime()
+            except:
+                return False
+            else:
+                logger.info(f"Updated latest_postprocessing to: {self.latest_postprocessing}")
+                return True
+        logger.info('Nothing to update')
+        return True
+
     @property
     def blueprint_url(self):
         if self.json.postprocessing is None:
@@ -589,22 +606,6 @@ class SCDevice:
             return self.json.postprocessing.latest_postprocessing
         else:
             return None
-
-    def update_latest_postprocessing(self, date):
-        if self.json.postprocessing is not None:
-            # Add latest postprocessing rounded up with
-            # frequency so that we don't end up in
-            # and endless loop processing only the latest data line
-            # (minute vs. second precission of the data)
-            try:
-                self.json.postprocessing.latest_postprocessing = date.to_pydatetime()
-            except:
-                return False
-            else:
-                logger.info(f"Updated latest_postprocessing to: {self.latest_postprocessing}")
-                return True
-        logger.info('Nothing to update')
-        return True
 
     @property
     def last_reading_at(self):
