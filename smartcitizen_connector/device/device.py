@@ -2,7 +2,7 @@ from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metri
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
-    get_pt_temp, find_by_field, dict_fmerge
+    get_pt_temp, find_by_field, dict_fmerge, get_request_headers
 from typing import Optional, List, Dict
 from requests import get, post, patch
 from aiohttp_retry import RetryClient, ExponentialRetry
@@ -99,24 +99,13 @@ class SCDevice:
         else:
             raise ValueError("Need at least id or params.id")
 
-        # Headers for requests
-        if 'SC_ADMIN_BEARER' in environ:
-            logger.info('Admin Bearer found, using it')
-            self._headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
-        elif 'SC_BEARER' in environ:
-            logger.info('Bearer found in environment, using it.')
-            # TODO make this explicit
-            self._headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
-        else:
-            logger.warning('No Bearer not found, you might get throttled!')
-            self._headers = None
-
         self.params = params
         self.url = f'{config.DEVICES_URL}{self.id}'
         self.page = f'{config.FRONTEND_URL}{self.id}'
         self.method = 'async'
         self.data = DataFrame()
         self._metrics: List[Metric] = []
+        self._headers = get_request_headers()
         self.__load__()
         self.__get_timezone__()
         if check_postprocessing:

@@ -10,6 +10,7 @@ import re
 import logging
 import sys
 import time
+from os import environ
 
 tf = TimezoneFinder()
 
@@ -132,6 +133,19 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(config.log_level)
 ch.setFormatter(CutsomLoggingFormatter())
 logger.addHandler(ch)
+
+def get_request_headers():
+    # Headers for requests
+    if 'SC_ADMIN_BEARER' in environ:
+        logger.info('Admin Bearer found, using it')
+        return {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
+    elif 'SC_BEARER' in environ:
+        logger.info('Bearer found in environment, using it.')
+        return {'Authorization':'Bearer ' + environ['SC_BEARER']}
+    else:
+        logger.warning('No Bearer found, you might get throttled!. Load SC_BEARER as an environment key with your Oauth token to make this dissapear')
+
+    return None
 
 def set_logger_level(level=logging.DEBUG):
     logger.setLevel(level)
