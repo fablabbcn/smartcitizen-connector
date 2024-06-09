@@ -98,6 +98,19 @@ class SCDevice:
             self.id = params.id
         else:
             raise ValueError("Need at least id or params.id")
+
+        # Headers for requests
+        if 'SC_ADMIN_BEARER' in environ:
+            logger.info('Admin Bearer found, using it')
+            self._headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
+        elif 'SC_BEARER' in environ:
+            logger.info('Bearer found in environment, using it.')
+            # TODO make this explicit
+            self._headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
+        else:
+            logger.warning('No Bearer not found, you might get throttled!')
+            self._headers = None
+
         self.params = params
         self.url = f'{config.DEVICES_URL}{self.id}'
         self.page = f'{config.FRONTEND_URL}{self.id}'
@@ -120,7 +133,7 @@ class SCDevice:
         logger.info(f'Device {self.json.id} initialized')
 
     def __load__(self):
-        r = safe_get(self.url)
+        r = safe_get(self.url, headers=self._headers)
         # TODO assess if one day SCDevice can inherit directly from Device
         self.json = TypeAdapter(Device).validate_python(r.json())
 
@@ -230,17 +243,6 @@ class SCDevice:
         resample: Optional[bool] = False,
         rename: Optional[bool] = True)->DataFrame:
 
-        if 'SC_ADMIN_BEARER' in environ:
-            logger.info('Admin Bearer found, using it')
-            headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
-        elif 'SC_BEARER' in environ:
-            logger.info('Bearer found in environment, using it.')
-            # TODO make this explicit
-            headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
-        else:
-            logger.warning('No Bearer not found, you might get throttled!')
-            headers = None
-
         logger.info(f'Make sure we are up to date')
         self.__load__()
         logger.info(f'Requesting data from SC API')
@@ -308,7 +310,7 @@ class SCDevice:
                 url += f'&sensor_id={sensor.id}'
                 url += '&function=avg'
 
-                tasks.append(asyncio.ensure_future(self.get_datum(semaphore, session, url, headers, sensor.id, resample, frequency, rename)))
+                tasks.append(asyncio.ensure_future(self.get_datum(semaphore, session, url, self._headers, sensor.id, resample, frequency, rename)))
 
             dfs_sensor = await asyncio.gather(*tasks)
 
@@ -410,7 +412,7 @@ class SCDevice:
                 df.rename(columns={_rename[column.name]: column.id}, inplace = True)
                 url = f'{self.url}/readings'
                 # Append task
-                tasks.append(asyncio.ensure_future(self.post_datum(session, headers, url, df,
+                tasks.append(asyncio.ensure_future(self.post_datum(session, self._headers, url, df,
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
                     max_retries = max_retries, delay=delay)))
 
