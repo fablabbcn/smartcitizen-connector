@@ -56,7 +56,7 @@ class Location(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
-class HardwareInfo(BaseModel):
+class HardwareStatus(BaseModel):
     id: str
     mac: str
     time: str
@@ -66,6 +66,13 @@ class HardwareInfo(BaseModel):
     esp_ver: str
     sam_ver: str
     rcause: Optional[str] = None
+
+class HardwareInfo(BaseModel):
+    name: str
+    type: str
+    version: Optional[str] = None
+    slug: str
+    # last_status_message: Optional[HardwareStatus] = 'FILTERED'
 
 class HardwareVersion(BaseModel):
     from_date: Optional[datetime] = None
@@ -102,7 +109,7 @@ class Device(BaseModel):
     description: str
     state: str
     postprocessing: Optional[Postprocessing] = None
-    hardware_info: Optional[HardwareInfo] = None
+    hardware: HardwareInfo
     system_tags: List[str]
     user_tags: List[str]
     is_private: bool
@@ -113,5 +120,4 @@ class Device(BaseModel):
     owner: Owner
     data: Data
     location: Optional[Location]= None
-    kit: Optional[Kit] = None
-    device_token: Optional[str] = ''
+    device_token: str = 'FILTERED'

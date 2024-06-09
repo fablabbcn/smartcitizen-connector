@@ -1,4 +1,4 @@
-from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metric, Postprocessing)
+from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
@@ -137,6 +137,15 @@ class SCDevice:
         r = safe_get(self.url, headers=self._headers)
         # TODO assess if one day SCDevice can inherit directly from Device
         self.json = TypeAdapter(Device).validate_python(r.json())
+        if r.json()['hardware']['last_status_message'] != '[FILTERED]':
+            logger.info('Device has status message')
+            print (r.json()['hardware'])
+            if r.json()['hardware']['last_status_message'] is not None:
+                self._last_status_message = TypeAdapter(HardwareStatus).validate_python(r.json()['hardware']['last_status_message'])
+            else:
+                self._last_status_message = None
+        else:
+            self._last_status_message = None
 
     def __get_timezone__(self) -> str:
 
@@ -610,6 +619,11 @@ class SCDevice:
     @property
     def last_reading_at(self):
         return self.json.last_reading_at
+
+    @property
+    def last_status_message(self):
+        return self._last_status_message
+
 
 def get_devices():
     isn = True
