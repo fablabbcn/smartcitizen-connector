@@ -47,7 +47,7 @@ class Owner(BaseModel):
     devices: Optional[List[str]] = None
 
 class Location(BaseModel):
-    city: str
+    city: Optional[str] = None
     country_code: str
     country: str
     exposure: Optional[str] = None
