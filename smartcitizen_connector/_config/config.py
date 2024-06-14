@@ -31,7 +31,7 @@ class Config():
     }
 
     _max_retries = 3
-    _rety_interval = 10
+    _retry_interval = 10
     _retry_codes = [
         HTTPStatus.TOO_MANY_REQUESTS,
         HTTPStatus.INTERNAL_SERVER_ERROR,

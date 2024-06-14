@@ -190,7 +190,6 @@ def safe_get(url, headers = None):
             if code in config._retry_codes:
                 time.sleep(config._retry_interval)
                 continue
-
             raise
         else:
             break
