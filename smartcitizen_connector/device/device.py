@@ -502,6 +502,7 @@ class SCDevice:
 
             while post_ok == False and retries < max_retries:
                 if delay is not None: time.sleep(delay)
+                headers['Content-type']='application/json'
                 response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers)
 
                 if response.status_code == 200 or response.status_code == 201:
