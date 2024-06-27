@@ -102,6 +102,11 @@ class Notifications(BaseModel):
     low_battery: bool
     stopped_publishing: bool
 
+class Policy(BaseModel):
+    is_private: bool
+    precise_location: bool
+    enable_forwarding: bool
+
 class Device(BaseModel):
     id: int
     uuid: str
@@ -112,7 +117,7 @@ class Device(BaseModel):
     hardware: HardwareInfo
     system_tags: List[str]
     user_tags: List[str]
-    is_private: bool
+    # data_policy: Policy
     notify: Notifications
     last_reading_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

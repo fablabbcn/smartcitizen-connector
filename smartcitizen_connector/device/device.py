@@ -1,4 +1,4 @@
-from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus)
+from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus, Policy)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
@@ -134,6 +134,11 @@ class SCDevice:
                 self._last_status_message = None
         else:
             self._last_status_message = None
+
+        if r.json()['data_policy']['enable_forwarding'] != '[FILTERED]':
+            self._data_policy = TypeAdapter(Policy).validate_python(r.json()['data_policy'])
+        else:
+            self._data_policy = None
 
     def __get_timezone__(self) -> str:
 
@@ -629,6 +634,10 @@ class SCDevice:
     @property
     def last_status_message(self):
         return self._last_status_message
+
+    @property
+    def data_policy(self):
+        return self._data_policy
 
 
 def get_devices():
