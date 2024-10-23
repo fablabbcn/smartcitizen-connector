@@ -1,20 +1,24 @@
-from .models import (Sensor, Measurement, Kit, Owner, Location,
-                     HardwareInfo, Postprocessing, Data, Device)
+from .models import (Sensor, Measurement, Owner, User, Location,
+                     HardwareInfo, Postprocessing, Data, Device, Experiment)
+from .handler import HttpHandler
 from .device import SCDevice#, get_devices
-from .sensor import SCSensor, get_sensors
-from .measurement import SCMeasurement, get_measurements
+from .sensor import SensorHandler, get_sensors
+from .measurement import MeasurementHandler, get_measurements
+from .experiment import ExperimentHandler, get_experiments
 from .search import search_by_query, global_search
+from .user import UserHandler, get_users
 
 __all__ = [
     "Device",
-    "Kit",
     "Sensor",
     "Measurement",
+    "User",
     "Owner",
     "Location",
     "Data",
     "Postprocessing",
-    "HardwareInfo"
+    "HardwareInfo",
+    "Experiment"
     ]
 
 __version__ = '1.1.3'

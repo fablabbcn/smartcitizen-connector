@@ -1,1 +1,1 @@
-from .measurement import SCMeasurement, get_measurements
+from .measurement import MeasurementHandler, get_measurements

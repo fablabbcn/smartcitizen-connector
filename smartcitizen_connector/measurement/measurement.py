@@ -1,28 +1,25 @@
-from smartcitizen_connector.models import (Sensor, Measurement)
+from smartcitizen_connector.models import Measurement
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import *
 from pydantic import TypeAdapter
-from typing import List
-from requests import get
+from typing import Optional, List
+from smartcitizen_connector.handler import HttpHandler
 
-class SCMeasurement:
-    id: int
-    url: str
-    page: str
-    json: Measurement
+# TODO - Can this inherit from Measurement?
+class MeasurementHandler(HttpHandler):
 
-    def __init__(self, id):
+    def __init__(self, id: int = None, **kwargs):
         self.id = id
-        self.url = f'{config.SENSORS_URL}{self.id}'
-        self.method = 'async'
-        r = self.__safe_get__(self.url)
-        self.json = TypeAdapter(Sensor).validate_python(r.json())
+        super().__init__(config.MEASUREMENTS_URL)
 
-    def __safe_get__(self, url):
-        r = get(url)
-        r.raise_for_status()
+        if self.id is not None:
+            r = self.get()
+            self.model = TypeAdapter(Measurement).validate_python(r.json())
+        else:
+            self.model = Measurement(**kwargs)
 
-        return r
+    def __getattr__(self, attr):
+        return self.model.__getattribute__(attr)
 
 def get_measurements():
     isn = True
@@ -40,4 +37,5 @@ def get_measurements():
             elif h['next'] != url: url = h['next']
         else:
             isn = False
+
     return result

@@ -10,6 +10,8 @@ class Config():
     DEVICES_URL =  API_URL + 'devices/'
     SENSORS_URL = API_URL + 'sensors/'
     MEASUREMENTS_URL = API_URL + 'measurements/'
+    EXPERIMENTS_URL = API_URL + 'experiments/'
+    USERS_URL = API_URL + 'users/'
     FRONTEND_URL = 'https://smartcitizen.me/kits/'
     BASE_POSTPROCESSING_URL='https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/'
     API_SEARCH_URL = API_URL + "search?q="

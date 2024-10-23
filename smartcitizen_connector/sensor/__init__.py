@@ -1,1 +1,1 @@
-from .sensor import SCSensor, get_sensors
+from .sensor import SensorHandler, get_sensors
