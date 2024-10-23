@@ -136,10 +136,7 @@ logger.addHandler(ch)
 
 def get_request_headers():
     # Headers for requests
-    if 'SC_ADMIN_BEARER' in environ:
-        logger.info('Admin Bearer found, using it')
-        return {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
-    elif 'SC_BEARER' in environ:
+    if 'SC_BEARER' in environ:
         logger.info('Bearer found in environment, using it.')
         return {'Authorization':'Bearer ' + environ['SC_BEARER']}
     else:

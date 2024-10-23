@@ -384,13 +384,7 @@ class SCDevice:
             logger.error('Cannot post without Auth Bearer')
             return False
 
-        if 'SC_ADMIN_BEARER' in environ:
-            logger.info('Using admin Bearer')
-            bearer = environ['SC_ADMIN_BEARER']
-        else:
-            bearer = environ['SC_BEARER']
-
-        headers = {'Authorization':'Bearer ' + bearer, 'Content-type': 'application/json'}
+        headers = {'Authorization':'Bearer ' + environ['SC_BEARER'], 'Content-type': 'application/json'}
         post_ok = True
 
         if columns == 'sensors':
@@ -540,11 +534,11 @@ class SCDevice:
             # }
         '''
 
-        if 'SC_ADMIN_BEARER' not in environ:
-            logger.error('Cannot post without Admin Auth Bearer')
+        if 'SC_BEARER' not in environ:
+            logger.error('Cannot post without Auth Bearer')
             return
 
-        headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER'],
+        headers = {'Authorization':'Bearer ' + environ['SC_BEARER'],
                    'Content-type': 'application/json'}
 
         post = {"postprocessing_attributes": loads(self.json.postprocessing.model_dump_json())}

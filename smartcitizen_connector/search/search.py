@@ -20,10 +20,7 @@ def global_search(value: Optional[str] = None) -> DataFrame:
     -------
         A list of kit IDs that comply with the requirements, or the full df, depending on full.
     """
-    if 'SC_ADMIN_BEARER' in environ:
-        logger.info('Admin Bearer found, using it')
-        headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
-    elif 'SC_BEARER' in environ:
+    if 'SC_BEARER' in environ:
         logger.info('Bearer found in environment, using it.')
         # TODO make this explicit
         headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
@@ -84,10 +81,7 @@ def search_by_query(endpoint: Optional[str] = 'devices',
         DataFrame with devices
     """
 
-    if 'SC_ADMIN_BEARER' in environ:
-        logger.info('Admin Bearer found, using it')
-        headers = {'Authorization':'Bearer ' + environ['SC_ADMIN_BEARER']}
-    elif 'SC_BEARER' in environ:
+    if 'SC_BEARER' in environ:
         logger.info('Bearer found in environment, using it.')
         # TODO make this explicit
         headers = {'Authorization':'Bearer ' + environ['SC_BEARER']}
