@@ -258,6 +258,7 @@ class SCDevice:
     async def get_data(self,
         min_date: Optional[datetime] = None,
         max_date: Optional[datetime] = None,
+        limit: Optional[int] = None,
         frequency: Optional[str] = '1Min',
         clean_na: Optional[str] = None,
         resample: Optional[bool] = False,
@@ -333,6 +334,7 @@ class SCDevice:
 
                 if min_date is not None: url += f'from={min_date}'
                 if max_date is not None: url += f'&to={max_date}'
+                if limit is not None: url += f'&limit={limit}'
 
                 url += f'&rollup={rollup}'
                 url += f'&sensor_id={sensor.id}'
