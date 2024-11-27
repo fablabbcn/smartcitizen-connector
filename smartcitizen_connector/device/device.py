@@ -261,6 +261,7 @@ class SCDevice:
         frequency: Optional[str] = '1Min',
         clean_na: Optional[str] = None,
         resample: Optional[bool] = False,
+        channels: Optional[List[str]] = [],
         rename: Optional[bool] = True)->DataFrame:
 
         logger.info(f'Make sure we are up to date')
@@ -324,6 +325,8 @@ class SCDevice:
 
             tasks = []
             for sensor in self.json.data.sensors:
+                if channels:
+                    if sensor.name not in channels: continue
 
                 # Request sensor per ID
                 url = self.url + '/readings?'
