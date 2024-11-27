@@ -268,7 +268,7 @@ class SCDevice:
 
         if self.json.state == 'never_published':
             logger.warning('Device has never published anything, skipping')
-            return False
+            return None
 
         logger.info(f'Requesting data from SC API')
         logger.info(f'Device ID: {self.id}')
@@ -277,7 +277,7 @@ class SCDevice:
 
         if self.timezone is None:
             logger.warning('Device does not have timezone set, skipping')
-            return False
+            return None
 
         # Check start date and end date
         # Converting to UTC by passing None
@@ -297,12 +297,12 @@ class SCDevice:
         if min_date is not None and self.json.last_reading_at is not None:
             if min_date > self.json.last_reading_at:
                 logger.warning(f'Device {self.id} request would yield empty data (min_date). Returning')
-                return False
+                return None
 
         if max_date is not None and self.json.created_at is not None:
             if max_date < self.json.created_at:
                 logger.warning(f'Device {self.id} request would yield empty data (max_date). Returning')
-                return False
+                return None
 
         if max_date is not None and self.json.last_reading_at is not None:
             if max_date > self.json.last_reading_at:
@@ -313,7 +313,7 @@ class SCDevice:
 
         if not self.json.data.sensors:
             logger.info(f'Device {self.id} is empty')
-            return False
+            return None
         else: logger.info(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 
         df = DataFrame()
