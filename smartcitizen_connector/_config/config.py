@@ -1,12 +1,16 @@
 from http import HTTPStatus
 import logging
+import os
 
 # Output config
 class Config():
     log_level = logging.INFO
 
     # Base URL for all methods
-    API_URL = 'https://api.smartcitizen.me/v0/'
+    if 'API_URL' in os.environ:
+        API_URL = os.environ['API_URL']
+    else:
+        API_URL = 'https://api.smartcitizen.me/v0/'
     DEVICES_URL =  API_URL + 'devices/'
     SENSORS_URL = API_URL + 'sensors/'
     MEASUREMENTS_URL = API_URL + 'measurements/'
