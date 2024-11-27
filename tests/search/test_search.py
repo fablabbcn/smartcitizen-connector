@@ -5,7 +5,7 @@ from requests import HTTPError
 def test_search():
     d_id = 4498
     d_uuid = "f7bc1d04-cebc-4989-b701-9912ba2ab20f"
-    u_uuid = "76affe1f-a1b8-4a47-bc0b-07bb8f9c700f"
+    u_uuid = "5a3bbb8c-af24-492c-a21a-1d2580f75ec6"
 
     raised_error = False
     with pytest.raises(HTTPError) as exc_info:
@@ -29,7 +29,7 @@ def test_search():
         search_items=[{
             'key': "username",
             'search_matcher': "eq",
-            'value': "team"}
+            'value': "oscgonfer"}
             ]
         )
 
