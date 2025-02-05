@@ -89,6 +89,7 @@ class Postprocessing(BaseModel):
     latest_postprocessing: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    device_id: Optional[int] = None
 
 class Data(BaseModel):
     sensors: Optional[List[Sensor]] = None

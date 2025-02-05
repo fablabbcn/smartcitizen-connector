@@ -61,7 +61,7 @@ def check_postprocessing(postprocessing):
         if len(urls)>1: logger.warning('URLs for postprocessing recipe are more than one, trying first')
         tentative_url = urls[0]
 
-    logger.info(f'Device has postprocessing information')
+    logger.info(f'Device {_postprocessing.device_id} has postprocessing information')
 
     _ok = True
     # Make hardware postprocessing
