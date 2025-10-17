@@ -1,4 +1,4 @@
-from smartcitizen_connector.models import (Device, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus, Policy)
+from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus, Policy)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
@@ -643,7 +643,6 @@ class SCDevice:
     def data_policy(self):
         return self._data_policy
 
-
 def get_devices():
     isn = True
     result = list()
@@ -654,6 +653,24 @@ def get_devices():
         # If status code OK, retrieve data
         h = process_headers(r.headers)
         result += TypeAdapter(List[Device]).validate_python(r.json())
+
+        if 'next' in h:
+            if h['next'] == url: isn = False
+            elif h['next'] != url: url = h['next']
+        else:
+            isn = False
+    return result
+
+def get_world_map():
+    isn = True
+    result = list()
+    url = config.WORLD_MAP_URL
+    while isn:
+        r = get(url)
+        r.raise_for_status()
+        # If status code OK, retrieve data
+        h = process_headers(r.headers)
+        result += TypeAdapter(List[ReducedDevice]).validate_python(r.json())
 
         if 'next' in h:
             if h['next'] == url: isn = False

@@ -67,7 +67,7 @@ class HardwareInfo(BaseModel):
     type: str
     version: Optional[str] = None
     slug: str
-    # last_status_message: Optional[HardwareStatus] = 'FILTERED'
+    # last_status_message: Optional[HardwareStatus]
 
 class HardwareVersion(BaseModel):
     from_date: Optional[datetime] = None
@@ -107,7 +107,7 @@ class Device(BaseModel):
     id: int
     uuid: str
     name: str
-    description: str
+    description: Optional[str] = None
     state: str
     postprocessing: Optional[Postprocessing] = None
     hardware: HardwareInfo
@@ -122,6 +122,17 @@ class Device(BaseModel):
     data: Optional[Data] = None
     location: Optional[Location]= None
     device_token: str = 'FILTERED'
+
+class ReducedDevice(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    state: str
+    hardware: HardwareInfo
+    system_tags: List[str]
+    user_tags: List[str]
+    last_reading_at: Optional[datetime] = None
+    location: Optional[Location]= None
 
 class Experiment(BaseModel):
     id: Optional[int] = None

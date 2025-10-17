@@ -12,6 +12,7 @@ class Config():
     else:
         API_URL = 'https://api.smartcitizen.me/v0/'
     DEVICES_URL =  API_URL + 'devices/'
+    WORLD_MAP_URL =  API_URL + 'devices/world_map'
     SENSORS_URL = API_URL + 'sensors/'
     MEASUREMENTS_URL = API_URL + 'measurements/'
     EXPERIMENTS_URL = API_URL + 'experiments/'
@@ -46,6 +47,6 @@ class Config():
         HTTPStatus.GATEWAY_TIMEOUT,
     ]
 
-    _max_concurrent_requests = 30
+    _max_concurrent_requests = 5
 
 config = Config()
