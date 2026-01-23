@@ -6,3 +6,4 @@ Check the file list below for a list of examples:
 - Get all measurements from the API: [measurements.py](measurements.py)
 - Get all sensors from the API: [sensors.py](sensors.py)
 - Various searches: [search.py](search.py)
+- Check user data: [user.ipynb](user.ipynb)
