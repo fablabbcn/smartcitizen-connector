@@ -1,7 +1,7 @@
 # from .models import (Sensor, Measurement, Owner, User, Location,
 #                      HardwareInfo, Postprocessing, Data, Device, Experiment)
 from .handler import HttpHandler
-from .device import SCDevice#, get_devices
+from .device import SCDevice, get_world_map #, get_devices
 from .sensor import SensorHandler, get_sensors
 from .measurement import MeasurementHandler, get_measurements
 from .experiment import ExperimentHandler, get_experiments
