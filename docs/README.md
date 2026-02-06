@@ -7,3 +7,4 @@ Check the file list below for a list of examples:
 - Get all sensors from the API: [sensors.py](sensors.py)
 - Various searches: [search.py](search.py)
 - Check user data: [user.ipynb](user.ipynb)
+- Get the world map and filter: [world_map.ipynb](world.ipynb)
