@@ -24,7 +24,7 @@ pip install -e .
 
 ## Usage
 
-Device (create and get data - blazingly fast!):
+- Device (create and get data):
 
 ```
 from smartcitizen_connector import SCDevice
@@ -38,7 +38,7 @@ await d.get_data(freq = '1Min') # returns pandas dataframe
 print (d.data)
 ```
 
-Search (see [docs](https://developer.smartcitizen.me/#basic-searching))
+- Search (see [docs](https://developer.smartcitizen.me/#basic-searching))
 
 ```
 from smartcitizen_connector import search_by_query
@@ -48,4 +48,12 @@ search_by_query(endpoint = 'users', key="username", search_matcher="cont", value
 search_by_query(endpoint = 'devices', key="name", search_matcher="cont", value="air")
 # Devices created after (date greater than) "2023-08-11"
 search_by_query(endpoint = 'devices', key="created_at", search_matcher="gt", value="2023-08-11")
+```
+
+- Authentication
+
+Set the following environment variable with your Smart Citizen API token:
+
+```
+SC_BEARER=xxxxx
 ```
