@@ -14,7 +14,7 @@ pip install smartcitizen-connector
 
 ### Development
 
-Or clone the repo and install in editable mode:
+Clone the repo and install in editable mode:
 
 ```
 git clone git@github.com:fablabbcn/smartcitizen-connector.git
@@ -23,6 +23,8 @@ pip install -e .
 ```
 
 ## Usage
+
+See [docs](/docs) for examples. a basic usage is shown below:
 
 - Device (create and get data):
 
