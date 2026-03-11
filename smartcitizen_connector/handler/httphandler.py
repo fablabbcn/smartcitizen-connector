@@ -12,6 +12,8 @@ class HttpHandler:
         self.__set_headers__()
         if self.id is not None:
             self.url = f'{self.path}{self.id}'
+        elif self.name is not None:
+            self.url = f'{self.path}{self.name}'
 
     def __set_headers__(self):
 

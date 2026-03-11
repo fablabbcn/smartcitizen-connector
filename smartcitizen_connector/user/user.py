@@ -7,11 +7,15 @@ from smartcitizen_connector.handler import HttpHandler
 
 class UserHandler(HttpHandler):
 
-    def __init__(self, id: int = None, **kwargs):
+    def __init__(self, id: int = None, name: str = None, **kwargs):
         self.id = id
+        self.name = name
         super().__init__(config.USERS_URL)
 
         if self.id is not None:
+            r = self.get()
+            self.model = TypeAdapter(User).validate_python(r.json())
+        elif self.name is not None:
             r = self.get()
             self.model = TypeAdapter(User).validate_python(r.json())
         else:
