@@ -361,7 +361,7 @@ class SCDevice:
         logger.info(f'Device {self.id} loaded successfully from API')
         return True
 
-    async def post_data(self, columns = 'sensors', rename = None, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay = None):
+    async def post_data(self, columns = 'sensors', rename = None, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay_between_posts = None):
         '''
             POST self.data in the SmartCitizen API
             Parameters
@@ -441,13 +441,13 @@ class SCDevice:
                 # Append task
                 tasks.append(asyncio.ensure_future(self.post_datum(session, self._headers, url, df,
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
-                    max_retries = max_retries, delay=delay)))
+                    max_retries = max_retries, delay_between_posts=delay_between_posts)))
 
             posts_ok = await asyncio.gather(*tasks)
 
         return not(False in posts_ok)
 
-    async def post_datum(self, session, headers, url, df, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay = None):
+    async def post_datum(self, session, headers, url, df, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay_between_posts = None):
         '''
             POST external pandas.DataFrame to the SmartCitizen API
             Parameters
@@ -513,7 +513,8 @@ class SCDevice:
             retries = 0
 
             while post_ok == False and retries < max_retries:
-                if delay is not None: time.sleep(delay)
+                if delay_between_posts is not None:
+                    time.sleep(delay_between_posts)
                 headers['Content-type']='application/json'
                 response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers)
 
