@@ -423,6 +423,9 @@ class SCDevice:
 
             tasks = []
             for column in _columns:
+                if column.name not in _rename:
+                    logger.warning(f'{column.name} not in data')
+                    continue
                 if _rename[column.name] not in self.data:
                     logger.warning(f'{_rename[column.name]} not in data')
                     continue
