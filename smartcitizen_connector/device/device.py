@@ -18,16 +18,17 @@ from tqdm import trange
 from json import dumps, JSONEncoder, loads
 import asyncio
 import time
+import numpy as np
 
 # numpy to json encoder to avoid convertion issues. borrowed from
 # https://stackoverflow.com/questions/50916422/python-typeerror-object-of-type-int64-is-not-json-serializable#50916741
 class NpEncoder(JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, integer):
+        if isinstance(obj, np.integer):
             return int(obj)
-        if isinstance(obj, floating):
+        if isinstance(obj, np.floating):
             return float(obj)
-        if isinstance(obj, ndarray):
+        if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
