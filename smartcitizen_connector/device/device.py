@@ -88,6 +88,10 @@ def check_postprocessing(postprocessing):
     else:
         _hardware_url = ''
 
+    # Custom hack
+    if _hardware_postprocessing is not None:
+        _hardware_postprocessing.blueprint_url = _hardware_postprocessing.blueprint_url.replace('master', 'enhancement/improve-blueprints')
+
     return _hardware_url, _hardware_postprocessing, _ok
 
 class SCDevice:
