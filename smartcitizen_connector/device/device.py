@@ -1,4 +1,4 @@
-from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, Metric, Postprocessing, HardwareStatus, Policy)
+from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, CalculatedChannel, Check, Postprocessing, HardwareStatus, Policy)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
@@ -105,7 +105,7 @@ class SCDevice:
         self.page = f'{config.FRONTEND_URL}{self.id}'
         self.method = 'async'
         self.data = DataFrame()
-        self._metrics: List[Metric] = []
+        self._channels: List[CalculatedChannel] = []
         self._headers = get_request_headers()
         self.__load__()
         self.__get_timezone__()
@@ -114,12 +114,15 @@ class SCDevice:
             self._filled_properties = list()
             self._properties = dict()
             if self.__check_blueprint__():
-                if self.__get_metrics__():
+                if self.__get_channels__():
                     # TODO Improve how this happens automatically
-                    self._filled_properties.append('metrics')
+                    self._filled_properties.append('channels')
+                if self.__get_checks__():
+                    self._filled_properties.append('checks')
                 self.__make_properties__()
         else:
-            self._metrics = []
+            self._channels = []
+            self._checks = []
 
         logger.info(f'Device {self.json.id} initialized')
 
@@ -163,10 +166,10 @@ class SCDevice:
             self._hardware_postprocessing = None
             logger.warning('No postprocessing information')
 
-    def __get_metrics__(self):
-        self._metrics = TypeAdapter(List[Metric]).validate_python([y for y in self._blueprint['metrics']])
+    def __get_channels__(self):
+        self._channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
 
-        # Convert that to metrics now
+        # Convert that to channels now
         if self._hardware_postprocessing is not None:
             for version in self._hardware_postprocessing.versions:
                 if version.from_date is not None:
@@ -175,19 +178,22 @@ class SCDevice:
                         continue
 
                 for slot in version.ids:
-                    metrics = None
+                    channels = None
                     if slot.startswith('AS'):
-                        metric = get_alphasense(slot, version.ids[slot])
+                        channel = get_alphasense(slot, version.ids[slot])
                     elif slot.startswith('PT'):
-                        metric = get_pt_temp(slot, version.ids[slot])
-                    for m in metric:
+                        channel = get_pt_temp(slot, version.ids[slot])
+                    for m in channel:
                         for key, value in m.items():
-                            item = find_by_field(self._metrics, key, 'name')
+                            item = find_by_field(self._channels, key, 'name')
                             if item is None:
                                 logger.warning(f'Item not found, {item[0]}')
                                 continue
                             item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
             return True
+
+    def __get_checks__(self):
+        self._checks = TypeAdapter(List[Check]).validate_python([y for y in self._blueprint['checks']])
 
     def __make_properties__(self):
         for item, value in self._blueprint.items():
@@ -369,7 +375,7 @@ class SCDevice:
             ----------
                 columns: List or string
                     'sensors'
-                    If string, either 'sensors' or 'metrics. Empty string is 'sensors' + 'metrics'
+                    If string, either 'sensors' or 'channels. Empty string is 'sensors' + 'channels'
                     If list, list containing column names.
                 clean_na: string, optional
                     'drop'
@@ -400,17 +406,17 @@ class SCDevice:
 
         if columns == 'sensors':
             _columns = self.json.data.sensors
-            # TODO - when a device has been processed, data will be there for metrics
-        elif columns == 'metrics':
-            _columns = self._metrics
+            # TODO - when a device has been processed, data will be there for channels
+        elif columns == 'channels':
+            _columns = self._channels
         elif type(columns) is list:
             _columns = list()
             for column in columns:
-                item = find_by_field(self.json.data.sensors + self._metrics, column, 'name')
+                item = find_by_field(self.json.data.sensors + self._channels, column, 'name')
                 if item is not None:
                     _columns.append(item)
         else:
-            _columns = self.json.data.sensors + self._metrics
+            _columns = self.json.data.sensors + self._channels
 
         if rename is None:
             logger.info('Renaming not required')
@@ -610,8 +616,8 @@ class SCDevice:
         return self._properties
 
     @property
-    def metrics(self):
-        return [metric.model_dump() for metric in self._metrics]
+    def channels(self):
+        return [channel.model_dump() for channel in self._channels]
 
     @property
     def sensors(self):

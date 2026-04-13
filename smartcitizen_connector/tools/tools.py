@@ -198,18 +198,18 @@ def get_alphasense(slot, sensor_id):
     # Alphasense type - AAN 803-04
     as_type = config._as_sensor_codes[sensor_id[0:3]]
     channel = as_type[as_type.index('_')+1:]
-    metric = channel
+    channel_fix = channel
     if channel == 'OX':
-        metric = 'O3'
+        channel_fix = 'O3'
 
     # Get working and auxiliary electrode names
     wen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+1]}"
     aen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+2]}"
 
     # Simply fill it up
-    logger.info(f'{metric} found in blueprint metrics, filling up with hardware info')
+    logger.info(f'{channel_fix} found in blueprint channels, filling up with hardware info')
 
-    result.append({metric: {
+    result.append({channel_fix: {
         'kwargs': {
             'we': wen,
             'ae': aen,
@@ -229,12 +229,12 @@ def get_pt_temp(slot, sensor_id):
     pt1000plus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+1]}"
     pt1000minus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+2]}"
 
-    metric = 'ASPT1000'
+    channel = 'ASPT1000'
 
     # Simply fill it up
-    logger.info(f'{metric} found in blueprint metrics, filling up with hardware info')
+    logger.info(f'{channel} found in blueprint channels, filling up with hardware info')
 
-    result.append({metric: {
+    result.append({channel: {
         'kwargs': {
             'pt1000plus': pt1000plus,
             'pt1000minus': pt1000minus,

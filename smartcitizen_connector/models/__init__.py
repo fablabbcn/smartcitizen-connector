@@ -1,3 +1,3 @@
-from .models import (Sensor, Measurement, Owner, User, Location, Metric,
+from .models import (Sensor, Measurement, Owner, User, Location, CalculatedChannel,
                      HardwareInfo, HardwarePostprocessing, Postprocessing,
-                     Data, Device, HardwareStatus, Policy, Experiment, ReducedDevice)
+                     Data, Device, HardwareStatus, Policy, Experiment, ReducedDevice, Check)
