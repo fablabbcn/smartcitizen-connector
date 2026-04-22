@@ -123,6 +123,9 @@ class SCDevice:
                     self._filled_properties.append('channels')
                 if self.__get_checks__():
                     self._filled_properties.append('checks')
+                if self.__get_exports__():
+                    self._filled_properties.append('exports')
+
                 self.__make_properties__()
         else:
             self._channels = []
@@ -198,6 +201,10 @@ class SCDevice:
 
     def __get_checks__(self):
         self._checks = TypeAdapter(List[Check]).validate_python([y for y in self._blueprint['checks']])
+
+
+    def __get_exports__(self):
+        self._exports = TypeAdapter(List[Export]).validate_python([y for y in self._blueprint['exports']])
 
     def __make_properties__(self):
         for item, value in self._blueprint.items():

@@ -31,6 +31,10 @@ class Check(BaseModel):
     args: Optional[dict] = None
     kwargs: Optional[dict] = None
 
+class Export(BaseModel):
+    name: str
+    columns: Optional[List[str]] = []
+
 class Sensor(BaseModel):
     id: int
     uuid: str
