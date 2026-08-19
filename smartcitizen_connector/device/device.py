@@ -1,4 +1,5 @@
-from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, CalculatedChannel, Check, Postprocessing, HardwareStatus, Policy)
+from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, CalculatedChannel,
+    Check, Export, Postprocessing, HardwareStatus, Policy)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
