@@ -117,7 +117,7 @@ class Policy(BaseModel):
     is_private: Any
     precise_location: Any
     enable_forwarding: Any
-    forwarding_destination: str
+    forwarding_destination: Any
 
 class Device(BaseModel):
     id: int
