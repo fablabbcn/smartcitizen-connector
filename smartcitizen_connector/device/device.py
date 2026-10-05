@@ -89,10 +89,6 @@ def check_postprocessing(postprocessing):
     else:
         _hardware_url = ''
 
-    # Custom hack
-    if _hardware_postprocessing is not None:
-        _hardware_postprocessing.blueprint_url = _hardware_postprocessing.blueprint_url.replace('master', 'enhancement/improve-blueprints')
-
     return _hardware_url, _hardware_postprocessing, _ok
 
 class SCDevice:
@@ -180,22 +176,24 @@ class SCDevice:
         # Convert that to channels now
         if self._hardware_postprocessing is not None:
             for version in self._hardware_postprocessing.versions:
-                if version.from_date is not None:
+                if version.from_date is not None and self.last_reading_at is not None:
                     if version.from_date > self.last_reading_at:
                         logger.warning('Postprocessing from_date is later than device last_reading_at. Skipping')
                         continue
 
                 for slot in version.ids:
-                    channels = None
                     if slot.startswith('AS'):
                         channel = get_alphasense(slot, version.ids[slot])
                     elif slot.startswith('PT'):
                         channel = get_pt_temp(slot, version.ids[slot])
+                    else:
+                        logger.warning(f'Unknown hardware slot {slot}. Skipping')
+                        continue
                     for m in channel:
                         for key, value in m.items():
                             item = find_by_field(self._channels, key, 'name')
                             if item is None:
-                                logger.warning(f'Item not found, {item[0]}')
+                                logger.warning(f'Item not found in blueprint channels: {key}')
                                 continue
                             item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
             return True

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from datetime import timezone
 
 class Measurement(BaseModel):
     id: int
@@ -85,9 +86,20 @@ class HardwareInfo(BaseModel):
     # last_status_message: Optional[HardwareStatus]
 
 class HardwareVersion(BaseModel):
-    from_date: Optional[datetime] = None
-    to_date: Optional[datetime] = None
+    # Hardware JSON files use "from" and "to" as keys
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_date: Optional[datetime] = Field(default=None, alias='from')
+    to_date: Optional[datetime] = Field(default=None, alias='to')
     ids: Optional[dict] = None
+
+    @field_validator('from_date', 'to_date')
+    @classmethod
+    def assume_utc(cls, value):
+        # Dates in hardware files are naive, but API dates are tz-aware
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
 
 class HardwarePostprocessing(BaseModel):
     blueprint_url: Optional[str] = None

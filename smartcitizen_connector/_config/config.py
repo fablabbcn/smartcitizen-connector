@@ -18,7 +18,10 @@ class Config():
     EXPERIMENTS_URL = API_URL + 'experiments/'
     USERS_URL = API_URL + 'users/'
     FRONTEND_URL = 'https://smartcitizen.me/kits/'
-    BASE_POSTPROCESSING_URL='https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/'
+    if 'BASE_POSTPROCESSING_URL' in os.environ:
+        BASE_POSTPROCESSING_URL = os.environ['BASE_POSTPROCESSING_URL']
+    else:
+        BASE_POSTPROCESSING_URL = 'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/'
     API_SEARCH_URL = API_URL + "search?q="
 
     # Alphasense sensor codes
