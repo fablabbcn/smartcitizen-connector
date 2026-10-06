@@ -109,6 +109,8 @@ class SCDevice:
         self._channels: List[CalculatedChannel] = []
         self._checks: List[Check] = []
         self._exports: List[Export] = []
+        # Sensors whose data request failed in the last get_data
+        self.failed_sensors: List[str] = []
         self._headers = get_request_headers()
         self.__load__()
         self.__get_timezone__()
@@ -249,6 +251,8 @@ class SCDevice:
                 if 'readings' not in datum:
                     logger.warning(f"Device: {self.json.id}- No readings in request for sensor: {sensor_id}: {sensor_name}")
                     logger.warning(f"Response code: {response}")
+                    # Failed request, as opposed to a sensor without data
+                    self.failed_sensors.append(sensor_name)
                     return None
 
                 if datum['readings'] == []:
@@ -291,6 +295,8 @@ class SCDevice:
         channels: Optional[List[str]] = [],
         rename: Optional[bool] = True)->DataFrame:
 
+        # Reset before any early return
+        self.failed_sensors = []
         logger.info(f'Make sure we are up to date')
         self.__load__()
 
