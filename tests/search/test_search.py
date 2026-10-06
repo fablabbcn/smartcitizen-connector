@@ -2,6 +2,9 @@ import pytest
 from smartcitizen_connector import search_by_query
 from requests import HTTPError
 
+# Requires the live Smart Citizen API
+pytestmark = pytest.mark.integration
+
 def test_search():
     d_id = 4498
     d_uuid = "f7bc1d04-cebc-4989-b701-9912ba2ab20f"
@@ -33,6 +36,6 @@ def test_search():
             ]
         )
 
-    assert u.uuid.values[0] == u_uuid, resp.text
-    assert d.uuid.values[0] == d_uuid, resp.text
+    assert u.uuid.values[0] == u_uuid
+    assert d.uuid.values[0] == d_uuid
     assert exc_info.type is HTTPError

@@ -1,6 +1,9 @@
 import pytest
 from smartcitizen_connector import get_sensors
 
+# Requires the live Smart Citizen API
+pytestmark = pytest.mark.integration
+
 def test_sensor():
     id = 3
     name = 'DHT22'

@@ -3,6 +3,9 @@ from smartcitizen_connector import SCDevice
 from smartcitizen_connector.tools import localise_date
 import asyncio
 
+# Requires the live Smart Citizen API
+pytestmark = pytest.mark.integration
+
 def test_device():
     id = 16838
     frequency = '1Min'

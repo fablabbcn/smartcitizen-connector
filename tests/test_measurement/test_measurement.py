@@ -1,6 +1,9 @@
 import pytest
 from smartcitizen_connector import get_measurements
 
+# Requires the live Smart Citizen API
+pytestmark = pytest.mark.integration
+
 def test_measurement():
     id = 7
     name = 'battery'
