@@ -1,4 +1,5 @@
-from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, CalculatedChannel, Check, Postprocessing, HardwareStatus, Policy)
+from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostprocessing, CalculatedChannel,
+    Check, Export, Postprocessing, HardwareStatus, Policy)
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
@@ -106,6 +107,8 @@ class SCDevice:
         self.method = 'async'
         self.data = DataFrame()
         self._channels: List[CalculatedChannel] = []
+        self._checks: List[Check] = []
+        self._exports: List[Export] = []
         self._headers = get_request_headers()
         self.__load__()
         self.__get_timezone__()
@@ -119,6 +122,9 @@ class SCDevice:
                     self._filled_properties.append('channels')
                 if self.__get_checks__():
                     self._filled_properties.append('checks')
+                if self.__get_exports__():
+                    self._filled_properties.append('exports')
+
                 self.__make_properties__()
         else:
             self._channels = []
@@ -172,28 +178,41 @@ class SCDevice:
         # Convert that to channels now
         if self._hardware_postprocessing is not None:
             for version in self._hardware_postprocessing.versions:
-                if version.from_date is not None:
+                if version.from_date is not None and self.last_reading_at is not None:
                     if version.from_date > self.last_reading_at:
                         logger.warning('Postprocessing from_date is later than device last_reading_at. Skipping')
                         continue
 
                 for slot in version.ids:
-                    channels = None
                     if slot.startswith('AS'):
                         channel = get_alphasense(slot, version.ids[slot])
                     elif slot.startswith('PT'):
                         channel = get_pt_temp(slot, version.ids[slot])
+                    else:
+                        logger.warning(f'Unknown hardware slot {slot}. Skipping')
+                        continue
                     for m in channel:
                         for key, value in m.items():
                             item = find_by_field(self._channels, key, 'name')
                             if item is None:
-                                logger.warning(f'Item not found, {item[0]}')
+                                logger.warning(f'Item not found in blueprint channels: {key}')
                                 continue
                             item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
             return True
 
     def __get_checks__(self):
-        self._checks = TypeAdapter(List[Check]).validate_python([y for y in self._blueprint['checks']])
+        if 'checks' not in self._blueprint:
+            self._checks = []
+            return False
+        self._checks = TypeAdapter(List[Check]).validate_python(self._blueprint['checks'])
+        return True
+
+    def __get_exports__(self):
+        if 'exports' not in self._blueprint:
+            self._exports = []
+            return False
+        self._exports = TypeAdapter(List[Export]).validate_python(self._blueprint['exports'])
+        return True
 
     def __make_properties__(self):
         for item, value in self._blueprint.items():
@@ -618,6 +637,14 @@ class SCDevice:
     @property
     def channels(self):
         return [channel.model_dump() for channel in self._channels]
+
+    @property
+    def checks(self):
+        return [check.model_dump() for check in self._checks]
+
+    @property
+    def exports(self):
+        return [export.model_dump() for export in self._exports]
 
     @property
     def sensors(self):
