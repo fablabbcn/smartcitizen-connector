@@ -49,7 +49,11 @@ def device():
 
 
 def get_datum(device):
-    return asyncio.run(device.get_datum(asyncio.Semaphore(1), None, 'url', None, 55, False, '1Min', True))
+    async def request():
+        # Semaphore created inside the loop: Python < 3.10 binds it to the current loop
+        return await device.get_datum(asyncio.Semaphore(1), None, 'url', None, 55, False, '1Min', True)
+
+    return asyncio.run(request())
 
 
 def test_readings(device, respond):
