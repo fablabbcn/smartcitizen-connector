@@ -295,6 +295,8 @@ class SCDevice:
         channels: Optional[List[str]] = [],
         rename: Optional[bool] = True)->DataFrame:
 
+        # Reset before any early return
+        self.failed_sensors = []
         logger.info(f'Make sure we are up to date')
         self.__load__()
 
@@ -349,7 +351,6 @@ class SCDevice:
         else: logger.info(f"Sensor IDs: {[f'{sensor.name}: {sensor.id}' for sensor in self.json.data.sensors]}")
 
         df = DataFrame()
-        self.failed_sensors = []
         logger.info(f'Requesting device {self.id} from {min_date} to {max_date}')
 
         semaphore = asyncio.Semaphore(config._max_concurrent_requests)

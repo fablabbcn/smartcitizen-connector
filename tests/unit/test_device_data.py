@@ -73,3 +73,12 @@ def test_failed_request(device, respond):
 
     assert get_datum(device) is None
     assert device.failed_sensors == ['TEMP']
+
+
+def test_get_data_resets_failed_sensors_on_early_return(device, monkeypatch):
+    device.failed_sensors = ['TEMP']
+    device.json.state = 'never_published'
+    monkeypatch.setattr(SCDevice, '__load__', lambda self: None)
+
+    assert asyncio.run(device.get_data()) is None
+    assert device.failed_sensors == []
