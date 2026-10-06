@@ -107,6 +107,8 @@ class SCDevice:
         self.method = 'async'
         self.data = DataFrame()
         self._channels: List[CalculatedChannel] = []
+        self._checks: List[Check] = []
+        self._exports: List[Export] = []
         self._headers = get_request_headers()
         self.__load__()
         self.__get_timezone__()
@@ -199,11 +201,18 @@ class SCDevice:
             return True
 
     def __get_checks__(self):
-        self._checks = TypeAdapter(List[Check]).validate_python([y for y in self._blueprint['checks']])
-
+        if 'checks' not in self._blueprint:
+            self._checks = []
+            return False
+        self._checks = TypeAdapter(List[Check]).validate_python(self._blueprint['checks'])
+        return True
 
     def __get_exports__(self):
-        self._exports = TypeAdapter(List[Export]).validate_python([y for y in self._blueprint['exports']])
+        if 'exports' not in self._blueprint:
+            self._exports = []
+            return False
+        self._exports = TypeAdapter(List[Export]).validate_python(self._blueprint['exports'])
+        return True
 
     def __make_properties__(self):
         for item, value in self._blueprint.items():
@@ -628,6 +637,14 @@ class SCDevice:
     @property
     def channels(self):
         return [channel.model_dump() for channel in self._channels]
+
+    @property
+    def checks(self):
+        return [check.model_dump() for check in self._checks]
+
+    @property
+    def exports(self):
+        return [export.model_dump() for export in self._exports]
 
     @property
     def sensors(self):
