@@ -12,6 +12,7 @@ from pandas import DataFrame, to_datetime
 from datetime import datetime
 from os import environ
 from pydantic import TypeAdapter
+import re
 import sys
 import json
 from math import isnan
@@ -33,10 +34,26 @@ class NpEncoder(JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
+# Files of the smartcitizen-data repository on GitHub, in any branch (branches can contain "/")
+SMARTCITIZEN_DATA_URL = re.compile(
+    r'^https?://(?:raw\.githubusercontent\.com/fablabbcn/smartcitizen-data/.+?'
+    r'|github\.com/fablabbcn/smartcitizen-data/(?:blob|raw)/.+?)'
+    r'/(?P<folder>hardware|blueprints)/(?P<name>[^/?#]+?)(?:\.json)?$')
+
+
+def to_base_url(url):
+    ''' Redirects smartcitizen-data hardware and blueprint urls to BASE_POSTPROCESSING_URL '''
+    match = SMARTCITIZEN_DATA_URL.match(url.strip()) if url else None
+    if match is None:
+        return url
+    return f"{config.BASE_POSTPROCESSING_URL}{match['folder']}/{match['name']}.json"
+
+
 def check_blueprint(blueprint_url):
     if blueprint_url is None or not blueprint_url:
         logger.info('No blueprint url')
         return None
+    blueprint_url = to_base_url(blueprint_url)
     if url_checker(blueprint_url):
         _blueprint = safe_get(blueprint_url).json()
     else:
@@ -61,7 +78,7 @@ def check_postprocessing(postprocessing):
         tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{_postprocessing.hardware_url}.json"
     else:
         if len(urls)>1: logger.warning('URLs for postprocessing recipe are more than one, trying first')
-        tentative_url = urls[0]
+        tentative_url = to_base_url(urls[0])
 
     logger.info(f'Device {_postprocessing.device_id} has postprocessing information')
 
