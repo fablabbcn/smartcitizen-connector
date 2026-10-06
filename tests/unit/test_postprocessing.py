@@ -94,3 +94,54 @@ def test_base_postprocessing_url_from_environment(monkeypatch):
 
     assert config_module.config.BASE_POSTPROCESSING_URL == \
         'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/'
+
+
+FLOWS = 'https://flows.smartcitizen.me/api/v1/'
+
+
+@pytest.mark.parametrize('url, expected', [
+    ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/hardware/SCAS220013.json',
+     f'{FLOWS}hardware/SCAS220013.json'),
+    ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/enhacement/flexible-handlers/hardware/SCAS210099.json',
+     f'{FLOWS}hardware/SCAS210099.json'),
+    ('https://github.com/fablabbcn/smartcitizen-data/blob/master/blueprints/sc_21_station_module.json',
+     f'{FLOWS}blueprints/sc_21_station_module.json'),
+    ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json',
+     f'{FLOWS}blueprints/sc_air.json'),
+    # Other urls are not changed
+    ('https://smartcitizen.me/kits/14673', 'https://smartcitizen.me/kits/14673'),
+    ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/calibrations/calibrations.json',
+     'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/calibrations/calibrations.json'),
+    (None, None),
+])
+def test_to_base_url(monkeypatch, url, expected):
+    monkeypatch.setattr(device_module.config, 'BASE_POSTPROCESSING_URL', FLOWS)
+
+    assert device_module.to_base_url(url) == expected
+
+
+def test_github_hardware_url_uses_base_url(monkeypatch, requested):
+    monkeypatch.setattr(device_module.config, 'BASE_POSTPROCESSING_URL', FLOWS)
+    github = 'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/hardware/SCAS220013.json'
+
+    url, _, ok = check_postprocessing({'device_id': 1, 'hardware_url': github})
+
+    assert ok is True
+    assert url == requested[0] == f'{FLOWS}hardware/SCAS220013.json'
+
+
+def test_github_blueprint_url_uses_base_url(monkeypatch, requested):
+    monkeypatch.setattr(device_module.config, 'BASE_POSTPROCESSING_URL', FLOWS)
+
+    device_module.check_blueprint('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json')
+
+    assert requested == [f'{FLOWS}blueprints/sc_air.json']
+
+
+def test_base_postprocessing_url_gets_trailing_slash(monkeypatch):
+    monkeypatch.setenv('BASE_POSTPROCESSING_URL', 'https://flows.smartcitizen.me/api/v1')
+    try:
+        assert importlib.reload(config_module).config.BASE_POSTPROCESSING_URL == FLOWS
+    finally:
+        monkeypatch.delenv('BASE_POSTPROCESSING_URL')
+        importlib.reload(config_module)
