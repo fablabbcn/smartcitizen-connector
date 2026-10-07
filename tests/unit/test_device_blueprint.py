@@ -17,6 +17,7 @@ def make_device(blueprint, hardware=None, last_reading_at=datetime(2026, 1, 1, t
     device._channels = []
     device._checks = []
     device._exports = []
+    device._versions = []
     device._filled_properties = []
     device._properties = {}
     device._hardware_postprocessing = None
@@ -108,3 +109,54 @@ def test_properties_hold_validated_items(blueprint, hardware):
     assert device.properties['checks'][0]['store_qc'] is True
     no2 = next(item for item in device.properties['channels'] if item['name'] == 'NO2')
     assert no2['kwargs']['alphasense_id'] == '212830246'
+
+
+def two_versions(hardware):
+    ''' Sensor swap: the NO2 sensor moves to another slot in 2025, the PT1000 is removed '''
+    hardware['versions'] = [
+        {'ids': {'AS_49_10': '212830246'}, 'from': '2025-01-01', 'to': None},
+        {'ids': {'AS_48_32': '202760040', 'PT_49_23': '10-002911'}, 'from': '2024-04-01', 'to': '2025-01-01'},
+    ]
+    return hardware
+
+
+def test_channels_by_version(blueprint, hardware):
+    device = make_device(blueprint, two_versions(hardware))
+
+    device.__get_channels__()
+
+    versions = device.channels_by_version
+    assert [(version['from_date'].date().isoformat(), version['to_date']) for version in versions] == [
+        ('2024-04-01', versions[0]['to_date']), ('2025-01-01', None)]
+    first, second = [{item['name']: item['kwargs'] for item in version['channels']} for version in versions]
+    assert first['NO2'] == {'we': 'ADC_48_3', 'ae': 'ADC_48_2', 't': 'EC_SENSOR_TEMP', 'alphasense_id': '202760040'}
+    assert second['NO2'] == {'we': 'ADC_49_1', 'ae': 'ADC_49_0', 't': 'EC_SENSOR_TEMP', 'alphasense_id': '212830246'}
+    # Sensors of an older version do not leak into the next one
+    assert first['ASPT1000']['afe_id'] == '10-002911'
+    assert second['ASPT1000']['afe_id'] is None
+
+
+def test_channels_are_the_latest_version(blueprint, hardware):
+    device = make_device(blueprint, two_versions(hardware))
+
+    device.__get_channels__()
+
+    assert channel(device, 'NO2')['kwargs']['alphasense_id'] == '212830246'
+    assert channel(device, 'ASPT1000')['kwargs']['afe_id'] is None
+
+
+def test_future_version_is_left_out(blueprint, hardware):
+    device = make_device(blueprint, two_versions(hardware), last_reading_at=datetime(2024, 6, 1, tzinfo=timezone.utc))
+
+    device.__get_channels__()
+
+    assert len(device.channels_by_version) == 1
+    assert channel(device, 'NO2')['kwargs']['alphasense_id'] == '202760040'
+
+
+def test_no_hardware(blueprint):
+    device = make_device(blueprint)
+
+    device.__get_channels__()
+
+    assert device.channels_by_version == []

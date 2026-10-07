@@ -9,7 +9,7 @@ from requests import get, post, patch
 from aiohttp_retry import RetryClient, ExponentialRetry
 from aiohttp import ClientResponseError, ClientResponse, ClientSession, ContentTypeError
 from pandas import DataFrame, to_datetime
-from datetime import datetime
+from datetime import datetime, timezone
 from os import environ
 from pydantic import TypeAdapter
 import re
@@ -124,6 +124,7 @@ class SCDevice:
         self.method = 'async'
         self.data = DataFrame()
         self._channels: List[CalculatedChannel] = []
+        self._versions = []
         self._checks: List[Check] = []
         self._exports: List[Export] = []
         # Sensors whose data request failed in the last get_data
@@ -191,32 +192,44 @@ class SCDevice:
             self._hardware_postprocessing = None
             logger.warning('No postprocessing information')
 
+    def __version_channels__(self, version):
+        ''' Blueprint channels filled with the sensors of a hardware version '''
+        channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
+        for slot in version.ids or {}:
+            if slot.startswith('AS'):
+                channel = get_alphasense(slot, version.ids[slot])
+            elif slot.startswith('PT'):
+                channel = get_pt_temp(slot, version.ids[slot])
+            else:
+                logger.warning(f'Unknown hardware slot {slot}. Skipping')
+                continue
+            for m in channel:
+                for key, value in m.items():
+                    item = find_by_field(channels, key, 'name')
+                    if item is None:
+                        logger.warning(f'Item not found in blueprint channels: {key}')
+                        continue
+                    item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
+        return channels
+
     def __get_channels__(self):
         self._channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
+        self._versions = []
 
-        # Convert that to channels now
         if self._hardware_postprocessing is not None:
-            for version in self._hardware_postprocessing.versions:
+            # Each version gets its own channels, used for the data of its period
+            versions = sorted(self._hardware_postprocessing.versions or [],
+                              key=lambda version: version.from_date or datetime.min.replace(tzinfo=timezone.utc))
+            for version in versions:
                 if version.from_date is not None and self.last_reading_at is not None:
                     if version.from_date > self.last_reading_at:
                         logger.warning('Postprocessing from_date is later than device last_reading_at. Skipping')
                         continue
-
-                for slot in version.ids:
-                    if slot.startswith('AS'):
-                        channel = get_alphasense(slot, version.ids[slot])
-                    elif slot.startswith('PT'):
-                        channel = get_pt_temp(slot, version.ids[slot])
-                    else:
-                        logger.warning(f'Unknown hardware slot {slot}. Skipping')
-                        continue
-                    for m in channel:
-                        for key, value in m.items():
-                            item = find_by_field(self._channels, key, 'name')
-                            if item is None:
-                                logger.warning(f'Item not found in blueprint channels: {key}')
-                                continue
-                            item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
+                self._versions.append({'from_date': version.from_date, 'to_date': version.to_date,
+                                       'channels': self.__version_channels__(version)})
+            # Current channels: those of the latest version
+            if self._versions:
+                self._channels = self._versions[-1]['channels']
             return True
 
     def __get_checks__(self):
@@ -656,6 +669,13 @@ class SCDevice:
     @property
     def properties(self):
         return self._properties
+
+    @property
+    def channels_by_version(self):
+        ''' Channels of each hardware version, with its period: [{from_date, to_date, channels}] '''
+        return [{'from_date': version['from_date'], 'to_date': version['to_date'],
+                 'channels': [channel.model_dump() for channel in version['channels']]}
+                for version in getattr(self, '_versions', [])]
 
     @property
     def channels(self):
