@@ -137,15 +137,7 @@ class SCDevice:
             self._filled_properties = list()
             self._properties = dict()
             if self.__check_blueprint__():
-                if self.__get_channels__():
-                    # TODO Improve how this happens automatically
-                    self._filled_properties.append('channels')
-                if self.__get_checks__():
-                    self._filled_properties.append('checks')
-                if self.__get_exports__():
-                    self._filled_properties.append('exports')
-
-                self.__make_properties__()
+                self.__fill_blueprint__()
         else:
             self._channels = []
             self._checks = []
@@ -178,6 +170,29 @@ class SCDevice:
         logger.info('Device {} timezone is {}'.format(self.id, self.timezone))
 
         return self.timezone
+
+    def __fill_blueprint__(self):
+        ''' Channels (per hardware version), checks, exports and properties from self._blueprint '''
+        self._filled_properties = list()
+        self._properties = dict()
+        if self.__get_channels__():
+            # TODO Improve how this happens automatically
+            self._filled_properties.append('channels')
+        if self.__get_checks__():
+            self._filled_properties.append('checks')
+        if self.__get_exports__():
+            self._filled_properties.append('exports')
+        self.__make_properties__()
+
+    def apply_blueprint(self, blueprint):
+        '''
+        Uses another blueprint (a dict, e.g. a long processing blueprint) with the hardware of
+        the device: its channels are filled with the sensors of each hardware version, as for the
+        blueprint of the hardware. Returns True if the channels were filled from the hardware
+        '''
+        self._blueprint = blueprint
+        self.__fill_blueprint__()
+        return 'channels' in self._filled_properties
 
     def __check_blueprint__(self):
         self._blueprint = check_blueprint(self.blueprint_url)
