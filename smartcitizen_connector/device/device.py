@@ -127,6 +127,11 @@ class SCDevice:
         self._versions = []
         self._checks: List[Check] = []
         self._exports: List[Export] = []
+        # Set by the postprocessing checks; empty when they do not run (check_postprocessing=False)
+        self._hardware_postprocessing = None
+        self._blueprint = None
+        self._filled_properties = []
+        self._properties = {}
         # Sensors whose data request failed in the last get_data
         self.failed_sensors: List[str] = []
         self._headers = get_request_headers()
@@ -190,8 +195,16 @@ class SCDevice:
         the device: its channels are filled with the sensors of each hardware version, as for the
         blueprint of the hardware. Returns True if the channels were filled from the hardware
         '''
+        # Restored as it was if the blueprint cannot be filled (e.g. without channels)
+        names = ('_blueprint', '_channels', '_versions', '_checks', '_exports', '_filled_properties', '_properties')
+        previous = {name: getattr(self, name) for name in names}
         self._blueprint = blueprint
-        self.__fill_blueprint__()
+        try:
+            self.__fill_blueprint__()
+        except Exception:
+            for name, value in previous.items():
+                setattr(self, name, value)
+            raise
         return 'channels' in self._filled_properties
 
     def __check_blueprint__(self):

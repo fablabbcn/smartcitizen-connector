@@ -178,3 +178,22 @@ def test_apply_blueprint_fills_another_blueprint(blueprint, hardware):
     assert first['NO2']['function'] == 'alphasense_als' and first['NO2']['kwargs']['alphasense_id'] == '202760040'
     assert device.properties['meta'] == {'kind': 'long'}
     assert [check['name'] for check in device.properties['checks']] == ['GAPS']
+
+
+def test_apply_blueprint_keeps_the_state_when_it_fails(blueprint, hardware):
+    device = make_device(blueprint, hardware)
+    device.__fill_blueprint__()
+    before = (device.channels, device.properties, device._blueprint)
+
+    with pytest.raises(KeyError):
+        device.apply_blueprint({'meta': {'kind': 'long'}})
+
+    assert (device.channels, device.properties, device._blueprint) == before
+
+
+def test_apply_blueprint_without_hardware(blueprint):
+    # As a device created with check_postprocessing=False: no hardware to fill the channels with
+    device = make_device(None)
+
+    assert device.apply_blueprint(blueprint) is False
+    assert [item['name'] for item in device.channels] == [item['name'] for item in blueprint['channels']]
