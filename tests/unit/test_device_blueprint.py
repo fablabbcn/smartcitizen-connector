@@ -160,3 +160,40 @@ def test_no_hardware(blueprint):
     device.__get_channels__()
 
     assert device.channels_by_version == []
+
+
+def test_apply_blueprint_fills_another_blueprint(blueprint, hardware):
+    device = make_device(blueprint, two_versions(hardware))
+    device.__fill_blueprint__()
+    long = {'meta': {'kind': 'long'}, 'checks': [{'name': 'GAPS', 'function': 'find_gaps'}],
+            'channels': [dict(item, function='alphasense_als', kwargs=dict(item['kwargs'], n_gaps=5))
+                         if item['name'] == 'NO2' else item for item in blueprint['channels']]}
+
+    assert device.apply_blueprint(long) is True
+
+    assert channel(device, 'NO2')['function'] == 'alphasense_als'
+    assert channel(device, 'NO2')['kwargs'] == {
+        'we': 'ADC_49_1', 'ae': 'ADC_49_0', 't': 'EC_SENSOR_TEMP', 'alphasense_id': '212830246', 'n_gaps': 5}
+    first = {item['name']: item for item in device.channels_by_version[0]['channels']}
+    assert first['NO2']['function'] == 'alphasense_als' and first['NO2']['kwargs']['alphasense_id'] == '202760040'
+    assert device.properties['meta'] == {'kind': 'long'}
+    assert [check['name'] for check in device.properties['checks']] == ['GAPS']
+
+
+def test_apply_blueprint_keeps_the_state_when_it_fails(blueprint, hardware):
+    device = make_device(blueprint, hardware)
+    device.__fill_blueprint__()
+    before = (device.channels, device.properties, device._blueprint)
+
+    with pytest.raises(KeyError):
+        device.apply_blueprint({'meta': {'kind': 'long'}})
+
+    assert (device.channels, device.properties, device._blueprint) == before
+
+
+def test_apply_blueprint_without_hardware(blueprint):
+    # As a device created with check_postprocessing=False: no hardware to fill the channels with
+    device = make_device(None)
+
+    assert device.apply_blueprint(blueprint) is False
+    assert [item['name'] for item in device.channels] == [item['name'] for item in blueprint['channels']]
