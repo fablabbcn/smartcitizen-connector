@@ -48,8 +48,11 @@ def global_search(value: Optional[str] = None) -> DataFrame:
         else:
             isn = False
 
-    if total is not None and len(df) < total:
-        logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
+    if total is not None:
+        # Callers can tell an incomplete result
+        df.attrs['total'] = total
+        if len(df) < total:
+            logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
 
     return df
 
@@ -90,7 +93,7 @@ def search_by_query(endpoint: Optional[str] = 'devices',
             Items per page
     Returns
     -------
-        DataFrame with devices
+        DataFrame with devices, with the number of items the API reports in attrs['total']
     """
 
     if 'SC_BEARER' in environ:
@@ -148,7 +151,10 @@ def search_by_query(endpoint: Optional[str] = 'devices',
         else:
             isn = False
 
-    if total is not None and len(df) < total:
-        logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
+    if total is not None:
+        # Callers can tell an incomplete result
+        df.attrs['total'] = total
+        if len(df) < total:
+            logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
 
     return df

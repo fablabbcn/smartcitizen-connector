@@ -41,6 +41,7 @@ def test_sorted_by_id_with_100_per_page(pages):
     assert requested[0].endswith('devices/?q[postprocessing_id_not_null]=1&q[s]=id asc&per_page=100')
     assert requested[1] == 'https://api.example/devices?page=2'
     assert list(result.index) == [1, 2, 3]
+    assert result.attrs['total'] == 3
 
 
 def test_warns_when_items_are_missing(pages, caplog):
@@ -49,6 +50,7 @@ def test_warns_when_items_are_missing(pages, caplog):
     with caplog.at_level(logging.WARNING):
         result = search_by_query(endpoint='devices', search_items=[{'key': 'postprocessing_id', 'value': 'not_null'}])
     assert list(result.index) == [1, 2]
+    assert result.attrs['total'] == 3
     assert 'Search returned 2 unique items, the API reports 3' in caplog.text
 
 
