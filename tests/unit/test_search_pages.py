@@ -59,3 +59,10 @@ def test_order_and_page_size_can_be_left_out(pages):
     search_by_query(endpoint='users', search_items=[{'key': 'username', 'search_matcher': 'eq', 'value': 'a'}],
                     order=None, per_page=None)
     assert requested[0].endswith('users/?q[username_eq]=a')
+
+
+def test_global_search_is_unchanged(pages):
+    requested = pages(Response([{'id': 2}, {'id': 1}], {'total': '2'}))
+    result = search_module.global_search('rooftop')
+    assert requested[0].endswith('rooftop')
+    assert list(result.index) == [1, 2]

@@ -48,12 +48,6 @@ def global_search(value: Optional[str] = None) -> DataFrame:
         else:
             isn = False
 
-    if total is not None:
-        # Callers can tell an incomplete result
-        df.attrs['total'] = total
-        if len(df) < total:
-            logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
-
     return df
 
 def search_by_query(endpoint: Optional[str] = 'devices',
