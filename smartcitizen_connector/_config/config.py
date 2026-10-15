@@ -23,21 +23,44 @@ class Config():
         'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/').rstrip('/') + '/'
     API_SEARCH_URL = API_URL + "search?q="
 
-    # Alphasense sensor codes
+    # Alphasense sensor codes: first three digits of the serial number. A-series sensors go on AFE
+    # boards, B-series on ISBs. 132, 162, 164, 202, 204, 212 and 214 checked against the datasheet
+    # sensitivities and the boards of the hardware that mounts them. 160 and 163 follow the pattern
+    # (B-series = A-series + 30 for CO, SO2, NO and H2S); 130, 133 and 134 are not in use yet
     _as_sensor_codes =  {
+        '130':  'ASA4_NO',
         '132':  'ASA4_CO',
         '133':  'ASA4_H2S',
-        '130':  'ASA4_NO',
+        '134':  'ASA4_SO2',
         '212':  'ASA4_NO2',
         '214':  'ASA4_OX',
-        '134':  'ASA4_SO2',
+        '160':  'ASB4_NO',
         '162':  'ASB4_CO',
-        '133':  'ASB4_H2S',#
-        '130':  'ASB4_NO', #
+        '163':  'ASB4_H2S',
+        '164':  'ASB4_SO2',
         '202':  'ASB4_NO2',
-        '204':  'ASB4_OX',
-        '164':  'ASB4_SO2'
+        '204':  'ASB4_OX'
     }
+
+    # Alphasense model of each sensor type
+    _as_sensor_models = {
+        'ASA4_CO':  'CO-A4',
+        'ASA4_H2S': 'H2S-A4',
+        'ASA4_NO':  'NO-A4',
+        'ASA4_NO2': 'NO2-A43F',
+        'ASA4_OX':  'OX-A431',
+        'ASA4_SO2': 'SO2-A4',
+        'ASB4_CO':  'CO-B4',
+        'ASB4_H2S': 'H2S-B4',
+        'ASB4_NO':  'NO-B4',
+        'ASB4_NO2': 'NO2-B43F',
+        'ASB4_OX':  'OX-B431',
+        'ASB4_SO2': 'SO2-B4'
+    }
+
+    # Alphasense AFE boards (for A-series sensors, with a PT1000): serial numbers <code>-<number>,
+    # e.g. 10-002911. The code does not tell the board model
+    _afe_board_codes = ('10', '12', '17')
 
     _max_retries = 3
     _retry_interval = 10
