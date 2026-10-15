@@ -51,7 +51,9 @@ def global_search(value: Optional[str] = None) -> DataFrame:
     return df
 
 def search_by_query(endpoint: Optional[str] = 'devices',
-    search_items: List[Dict] = None) -> DataFrame:
+    search_items: List[Dict] = None,
+    order: Optional[str] = 'id asc',
+    per_page: Optional[int] = 100) -> DataFrame:
         # key: Optional[str] = '',
         # search_matcher: Optional[str] = '',
         # value: Optional[str] = None]) -> DataFrame:
@@ -76,9 +78,16 @@ def search_by_query(endpoint: Optional[str] = 'devices',
                 None
                 Query to fit
                 For null, not_null values, use 'null' or 'not_null'. In this case ignores search_matcher
+        order: string
+            'id asc'
+            Ransack sort of the results. Without a sort, the API pages come in no stable order:
+            some items show up in two pages and others in none
+        per_page: int
+            100
+            Items per page
     Returns
     -------
-        DataFrame with devices
+        DataFrame with devices, with the number of items the API reports in attrs['total']
     """
 
     if 'SC_BEARER' in environ:
@@ -111,15 +120,22 @@ def search_by_query(endpoint: Optional[str] = 'devices',
 
         url_queries += 1
 
+    if order:
+        url += f'&q[s]={order}'
+    if per_page:
+        url += f'&per_page={per_page}'
 
     df = DataFrame()
     isn = True
+    total = None
     logger.info(f'Getting: {url}')
     while isn:
         r = get(url, headers = headers)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)
+        # The total header is the number of items, not of pages
+        if total is None and 'total_pages' in h: total = int(h['total_pages'])
         if r.json() == []: return None
         df = df.combine_first(DataFrame(r.json()).set_index('id'))
 
@@ -128,5 +144,11 @@ def search_by_query(endpoint: Optional[str] = 'devices',
             elif h['next'] != url: url = h['next']
         else:
             isn = False
+
+    if total is not None:
+        # Callers can tell an incomplete result
+        df.attrs['total'] = total
+        if len(df) < total:
+            logger.warning(f'Search returned {len(df)} unique items, the API reports {total}')
 
     return df
