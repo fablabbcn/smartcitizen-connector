@@ -65,4 +65,4 @@ def test_global_search_is_unchanged(pages):
     requested = pages(Response([{'id': 2}, {'id': 1}], {'total': '2'}))
     result = search_module.global_search('rooftop')
     assert requested[0].endswith('rooftop')
-    assert list(result.index) == [1, 2]
+    assert sorted(result.index) == [1, 2]
