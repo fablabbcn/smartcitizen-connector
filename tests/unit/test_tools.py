@@ -108,3 +108,13 @@ def test_process_headers():
         'next': 'https://api/v0/devices?page=2',
         'last': 'https://api/v0/devices?page=2',
     }
+
+
+def test_alphasense_codes_are_unique_and_have_models():
+    from smartcitizen_connector._config import config
+    codes = config._as_sensor_codes
+    # A-series and B-series of the same gas never share a code
+    assert codes['133'] == 'ASA4_H2S' and codes['163'] == 'ASB4_H2S'
+    assert codes['130'] == 'ASA4_NO' and codes['160'] == 'ASB4_NO'
+    assert set(codes.values()) == set(config._as_sensor_models)
+    assert len(set(codes.values())) == len(codes)
