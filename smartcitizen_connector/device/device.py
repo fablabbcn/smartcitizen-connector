@@ -531,9 +531,9 @@ class SCDevice:
                     max_retries = max_retries, delay_between_posts=delay_between_posts)))
 
             if not tasks:
-                # Nothing posted is not a success: the caller would move latest_postprocessing past this data
-                logger.error('Nothing to post: none of the columns is in the data with an id')
-                return False
+                # E.g. only channels without an id were processed: nothing to post is fine
+                logger.warning('Nothing to post: none of the columns is in the data with an id')
+                return True
             posts_ok = await asyncio.gather(*tasks)
 
         return not(False in posts_ok)

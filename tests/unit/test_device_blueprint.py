@@ -211,7 +211,7 @@ def test_apply_blueprint_without_hardware(blueprint):
     assert [item['name'] for item in device.channels] == [item['name'] for item in blueprint['channels']]
 
 
-def test_posting_nothing_is_not_a_success(blueprint, hardware, monkeypatch):
+def test_posting_nothing_is_said(blueprint, hardware, monkeypatch, caplog):
     import asyncio
     from pandas import DataFrame, date_range
 
@@ -221,4 +221,6 @@ def test_posting_nothing_is_not_a_success(blueprint, hardware, monkeypatch):
     # Processed data without any of the channels to post
     device.data = DataFrame({'TEMP': [1.0, 2.0]}, index=date_range('2026-01-01', periods=2, freq='min', tz='UTC'))
 
-    assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is False
+    # Devices with only channels without an id processed (e.g. CO2) have nothing to post
+    assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is True
+    assert 'Nothing to post' in caplog.text
