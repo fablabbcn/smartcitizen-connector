@@ -256,13 +256,11 @@ def get_slot(slot, sensor_id):
     Blueprint channels to fill for a hardware slot. An AS slot holds an Alphasense
     sensor or an AFE board (its PT1000, for EC_SENSOR_TEMP), a PT slot an AFE board
     '''
-    if is_afe_board(sensor_id):
+    if not slot.startswith(('AS', 'PT')):
+        return None
+    if is_afe_board(sensor_id) or slot.startswith('PT'):
         return get_pt_temp(slot, sensor_id)
-    if slot.startswith('AS'):
-        return get_alphasense(slot, sensor_id)
-    if slot.startswith('PT'):
-        return get_pt_temp(slot, sensor_id)
-    return None
+    return get_alphasense(slot, sensor_id)
 
 def find_by_field(models, value, field):
     try:
