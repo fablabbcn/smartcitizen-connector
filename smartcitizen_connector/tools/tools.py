@@ -203,8 +203,9 @@ def get_alphasense(slot, sensor_id):
         channel_fix = 'O3'
 
     # Get working and auxiliary electrode names
-    wen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+1]}"
-    aen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+2]}"
+    _, address, channels = slot.split('_')
+    wen = f"ADC_{address}_{channels[0]}"
+    aen = f"ADC_{address}_{channels[1]}"
 
     # Simply fill it up
     logger.info(f'{channel_fix} found in blueprint channels, filling up with hardware info')
@@ -225,9 +226,10 @@ def get_alphasense(slot, sensor_id):
 def get_pt_temp(slot, sensor_id):
     result = list()
 
-    # Get working and auxiliary electrode names
-    pt1000plus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+1]}"
-    pt1000minus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+2]}"
+    # Get PT1000 positive and negative channel names (the slot can be AS_ or PT_)
+    _, address, channels = slot.split('_')
+    pt1000plus = f"ADC_{address}_{channels[0]}"
+    pt1000minus = f"ADC_{address}_{channels[1]}"
 
     channel = 'ASPT1000'
 
@@ -244,6 +246,23 @@ def get_pt_temp(slot, sensor_id):
     result.append({f'PT1000_POS': {'kwargs': {'channel': pt1000plus}}})
 
     return result
+
+def is_afe_board(sensor_id):
+    ''' Alphasense AFE board ids are <code>-<six digits>, e.g. 10-002911 '''
+    return re.fullmatch(r'[0-9]{2}-[0-9]{6}', str(sensor_id)) is not None
+
+def get_slot(slot, sensor_id):
+    '''
+    Blueprint channels to fill for a hardware slot. An AS slot holds an Alphasense
+    sensor or an AFE board (its PT1000, for EC_SENSOR_TEMP), a PT slot an AFE board
+    '''
+    if is_afe_board(sensor_id):
+        return get_pt_temp(slot, sensor_id)
+    if slot.startswith('AS'):
+        return get_alphasense(slot, sensor_id)
+    if slot.startswith('PT'):
+        return get_pt_temp(slot, sensor_id)
+    return None
 
 def find_by_field(models, value, field):
     try:

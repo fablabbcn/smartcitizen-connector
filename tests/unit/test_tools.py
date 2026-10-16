@@ -4,7 +4,7 @@ from pandas import DataFrame
 
 from smartcitizen_connector.models import Export
 from smartcitizen_connector.tools import (clean, convert_freq_to_rollup, dict_fmerge,
-                                          find_by_field, get_alphasense, get_pt_temp,
+                                          find_by_field, get_alphasense, get_pt_temp, get_slot,
                                           process_headers, url_checker)
 
 
@@ -41,6 +41,27 @@ def test_get_pt_temp():
                                  'afe_id': '10-002911'}}},
         {'PT1000_POS': {'kwargs': {'channel': 'ADC_49_2'}}},
     ]
+
+
+@pytest.mark.parametrize('slot, sensor_id, filled', [
+    ('AS_48_32', '212830246', 'NO2'),
+    ('AS_49_32', '17-000123', 'ASPT1000'),
+    ('PT_49_23', '10-002911', 'ASPT1000'),
+])
+def test_get_slot_routes_on_the_sensor_id(slot, sensor_id, filled):
+    assert list(get_slot(slot, sensor_id)[0]) == [filled]
+
+
+def test_afe_board_in_an_as_slot():
+    assert get_slot('AS_49_32', '17-000123') == [
+        {'ASPT1000': {'kwargs': {'pt1000plus': 'ADC_49_3', 'pt1000minus': 'ADC_49_2',
+                                 'afe_id': '17-000123'}}},
+        {'PT1000_POS': {'kwargs': {'channel': 'ADC_49_3'}}},
+    ]
+
+
+def test_unknown_slot():
+    assert get_slot('XX_48_01', '212830246') is None
 
 
 @pytest.mark.parametrize('string, expected', [

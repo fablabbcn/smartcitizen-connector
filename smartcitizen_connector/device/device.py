@@ -3,7 +3,7 @@ from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostpr
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
-    get_pt_temp, find_by_field, dict_fmerge, get_request_headers
+    get_pt_temp, get_slot, find_by_field, dict_fmerge, get_request_headers
 from typing import Optional, List, Dict
 from requests import get, post, patch
 from aiohttp_retry import RetryClient, ExponentialRetry
@@ -224,11 +224,8 @@ class SCDevice:
         ''' Blueprint channels filled with the sensors of a hardware version '''
         channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
         for slot in version.ids or {}:
-            if slot.startswith('AS'):
-                channel = get_alphasense(slot, version.ids[slot])
-            elif slot.startswith('PT'):
-                channel = get_pt_temp(slot, version.ids[slot])
-            else:
+            channel = get_slot(slot, version.ids[slot])
+            if channel is None:
                 logger.warning(f'Unknown hardware slot {slot}. Skipping')
                 continue
             for m in channel:
@@ -533,6 +530,10 @@ class SCDevice:
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
                     max_retries = max_retries, delay_between_posts=delay_between_posts)))
 
+            if not tasks:
+                # Nothing posted is not a success: the caller would move latest_postprocessing past this data
+                logger.error('Nothing to post: none of the columns is in the data with an id')
+                return False
             posts_ok = await asyncio.gather(*tasks)
 
         return not(False in posts_ok)

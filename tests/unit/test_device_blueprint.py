@@ -43,6 +43,18 @@ def test_hardware_fills_channels(blueprint, hardware):
     assert channel(device, 'PT1000_POS')['kwargs'] == {'channel': 'ADC_49_2'}
 
 
+def test_afe_board_in_an_as_slot_fills_the_pt1000(blueprint, hardware):
+    hardware['versions'][0]['ids'] = {'AS_48_32': '212830246', 'AS_49_32': '17-000123'}
+    device = make_device(blueprint, hardware)
+
+    device.__get_channels__()
+
+    assert channel(device, 'ASPT1000')['kwargs'] == {
+        'pt1000minus': 'ADC_49_2', 'pt1000plus': 'ADC_49_3', 'afe_id': '17-000123'}
+    assert channel(device, 'PT1000_POS')['kwargs'] == {'channel': 'ADC_49_3'}
+    assert channel(device, 'NO2')['kwargs']['alphasense_id'] == '212830246'
+
+
 def test_version_after_last_reading_is_skipped(blueprint, hardware):
     device = make_device(blueprint, hardware, last_reading_at=datetime(2024, 1, 1, tzinfo=timezone.utc))
 
@@ -197,3 +209,16 @@ def test_apply_blueprint_without_hardware(blueprint):
 
     assert device.apply_blueprint(blueprint) is False
     assert [item['name'] for item in device.channels] == [item['name'] for item in blueprint['channels']]
+
+
+def test_posting_nothing_is_not_a_success(blueprint, hardware, monkeypatch):
+    import asyncio
+    from pandas import DataFrame, date_range
+
+    monkeypatch.setenv('SC_BEARER', 'token')
+    device = make_device(blueprint, hardware)
+    device.__get_channels__()
+    # Processed data without any of the channels to post
+    device.data = DataFrame({'TEMP': [1.0, 2.0]}, index=date_range('2026-01-01', periods=2, freq='min', tz='UTC'))
+
+    assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is False
