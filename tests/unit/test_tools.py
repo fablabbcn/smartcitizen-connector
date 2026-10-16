@@ -141,3 +141,28 @@ def test_alphasense_codes_are_unique_and_have_models():
     assert codes['130'] == 'ASA4_NO' and codes['160'] == 'ASB4_NO'
     assert set(codes.values()) == set(config._as_sensor_models)
     assert len(set(codes.values())) == len(codes)
+
+
+@pytest.mark.parametrize('dates', [
+    ['2026-10-16T19:57:35Z', '2026-10-16T19:58:35.123Z'],
+    ['2026-10-16T19:57:35.5Z', '2026-10-16T19:58:35Z'],
+    ['2026-10-16 19:57:35+00:00', '2026-10-16 19:58:35+00:00'],
+])
+def test_localise_api_dates_without_warnings(dates):
+    import warnings
+    from pandas import Index, Timestamp
+    from smartcitizen_connector.tools import localise_date
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        result = localise_date(Index(dates), 'Europe/Madrid')
+
+    assert result[0] == Timestamp(dates[0]) and str(result.tz) == 'Europe/Madrid'
+
+
+@pytest.mark.parametrize('date, expected', [('01/02/2024', '2024-01-02'), ('2024-01-02', '2024-01-02')])
+def test_localise_other_dates(date, expected):
+    from pandas import Timestamp
+    from smartcitizen_connector.tools import localise_date
+
+    assert localise_date(date, 'UTC') == Timestamp(expected, tz='UTC')
