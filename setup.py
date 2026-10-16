@@ -46,7 +46,7 @@ setup(
     ],
     install_requires=["pydantic",
         "requests",
-        "pandas",
+        "pandas>=2.0",
         "timezonefinder",
         "urllib3",
         "aiohttp",

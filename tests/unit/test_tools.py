@@ -4,7 +4,7 @@ from pandas import DataFrame
 
 from smartcitizen_connector.models import Export
 from smartcitizen_connector.tools import (clean, convert_freq_to_rollup, dict_fmerge,
-                                          find_by_field, get_alphasense, get_pt_temp,
+                                          find_by_field, get_alphasense, get_pt_temp, get_slot,
                                           process_headers, url_checker)
 
 
@@ -41,6 +41,29 @@ def test_get_pt_temp():
                                  'afe_id': '10-002911'}}},
         {'PT1000_POS': {'kwargs': {'channel': 'ADC_49_2'}}},
     ]
+
+
+@pytest.mark.parametrize('slot, sensor_id, filled', [
+    ('AS_48_32', '212830246', 'NO2'),
+    ('AS_49_32', '17-000123', 'ASPT1000'),
+    ('PT_49_23', '10-002911', 'ASPT1000'),
+])
+def test_get_slot_routes_on_the_sensor_id(slot, sensor_id, filled):
+    assert list(get_slot(slot, sensor_id)[0]) == [filled]
+
+
+def test_afe_board_in_an_as_slot():
+    assert get_slot('AS_49_32', '17-000123') == [
+        {'ASPT1000': {'kwargs': {'pt1000plus': 'ADC_49_3', 'pt1000minus': 'ADC_49_2',
+                                 'afe_id': '17-000123'}}},
+        {'PT1000_POS': {'kwargs': {'channel': 'ADC_49_3'}}},
+    ]
+
+
+@pytest.mark.parametrize('slot', ['XX_48_01', 'ASX_48_32', 'AS', 'AS_48', 'PT_49_2', 'AS_48_32_1'])
+@pytest.mark.parametrize('sensor_id', ['212830246', '17-000123'])
+def test_unknown_slot(slot, sensor_id):
+    assert get_slot(slot, sensor_id) is None
 
 
 @pytest.mark.parametrize('string, expected', [
@@ -118,3 +141,28 @@ def test_alphasense_codes_are_unique_and_have_models():
     assert codes['130'] == 'ASA4_NO' and codes['160'] == 'ASB4_NO'
     assert set(codes.values()) == set(config._as_sensor_models)
     assert len(set(codes.values())) == len(codes)
+
+
+@pytest.mark.parametrize('dates', [
+    ['2026-10-16T19:57:35Z', '2026-10-16T19:58:35.123Z'],
+    ['2026-10-16T19:57:35.5Z', '2026-10-16T19:58:35Z'],
+    ['2026-10-16 19:57:35+00:00', '2026-10-16 19:58:35+00:00'],
+])
+def test_localise_api_dates_without_warnings(dates):
+    import warnings
+    from pandas import Index, Timestamp
+    from smartcitizen_connector.tools import localise_date
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        result = localise_date(Index(dates), 'Europe/Madrid')
+
+    assert result[0] == Timestamp(dates[0]) and str(result.tz) == 'Europe/Madrid'
+
+
+@pytest.mark.parametrize('date, expected', [('01/02/2024', '2024-01-02'), ('2024-01-02', '2024-01-02')])
+def test_localise_other_dates(date, expected):
+    from pandas import Timestamp
+    from smartcitizen_connector.tools import localise_date
+
+    assert localise_date(date, 'UTC') == Timestamp(expected, tz='UTC')

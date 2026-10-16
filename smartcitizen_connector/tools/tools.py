@@ -94,7 +94,12 @@ def localise_date(date, timezone, tzaware=True):
     if date is not None:
         # Per default, we consider that timestamps are tz-aware or UTC.
         # If not, preprocessing should be done to get there
-        result_date = to_datetime(date, utc = tzaware)
+        # API dates are ISO 8601, with or without fractions of a second: parsing them by a format
+        # guessed from the first one warns, or fails when the others differ
+        try:
+            result_date = to_datetime(date, utc = tzaware, format = 'ISO8601')
+        except (ValueError, TypeError):
+            result_date = to_datetime(date, utc = tzaware)
         if result_date.tzinfo is not None:
             result_date = result_date.tz_convert(timezone)
         else:
@@ -203,8 +208,9 @@ def get_alphasense(slot, sensor_id):
         channel_fix = 'O3'
 
     # Get working and auxiliary electrode names
-    wen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+1]}"
-    aen = f"ADC_{slot.strip('AS_')[:slot.index('_')]}_{slot.strip('AS_')[slot.index('_')+2]}"
+    _, address, channels = slot.split('_')
+    wen = f"ADC_{address}_{channels[0]}"
+    aen = f"ADC_{address}_{channels[1]}"
 
     # Simply fill it up
     logger.info(f'{channel_fix} found in blueprint channels, filling up with hardware info')
@@ -225,9 +231,10 @@ def get_alphasense(slot, sensor_id):
 def get_pt_temp(slot, sensor_id):
     result = list()
 
-    # Get working and auxiliary electrode names
-    pt1000plus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+1]}"
-    pt1000minus = f"ADC_{slot.strip('PT_')[:slot.index('_')]}_{slot.strip('PT_')[slot.index('_')+2]}"
+    # Get PT1000 positive and negative channel names (the slot can be AS_ or PT_)
+    _, address, channels = slot.split('_')
+    pt1000plus = f"ADC_{address}_{channels[0]}"
+    pt1000minus = f"ADC_{address}_{channels[1]}"
 
     channel = 'ASPT1000'
 
@@ -244,6 +251,25 @@ def get_pt_temp(slot, sensor_id):
     result.append({f'PT1000_POS': {'kwargs': {'channel': pt1000plus}}})
 
     return result
+
+def is_afe_board(sensor_id):
+    ''' Alphasense AFE board ids are <code>-<six digits>, e.g. 10-002911 '''
+    return re.fullmatch(r'[0-9]{2}-[0-9]{6}', str(sensor_id)) is not None
+
+def is_slot(slot):
+    ''' Hardware slots: AS_<address>_<channels> or PT_<address>_<channels>, e.g. AS_48_32 '''
+    return re.fullmatch(r'(AS|PT)_[0-9a-fA-F]{2}_[0-9]{2}', str(slot)) is not None
+
+def get_slot(slot, sensor_id):
+    '''
+    Blueprint channels to fill for a hardware slot. An AS slot holds an Alphasense
+    sensor or an AFE board (its PT1000, for EC_SENSOR_TEMP), a PT slot an AFE board
+    '''
+    if not is_slot(slot):
+        return None
+    if is_afe_board(sensor_id) or slot.startswith('PT'):
+        return get_pt_temp(slot, sensor_id)
+    return get_alphasense(slot, sensor_id)
 
 def find_by_field(models, value, field):
     try:
