@@ -251,12 +251,16 @@ def is_afe_board(sensor_id):
     ''' Alphasense AFE board ids are <code>-<six digits>, e.g. 10-002911 '''
     return re.fullmatch(r'[0-9]{2}-[0-9]{6}', str(sensor_id)) is not None
 
+def is_slot(slot):
+    ''' Hardware slots: AS_<address>_<channels> or PT_<address>_<channels>, e.g. AS_48_32 '''
+    return re.fullmatch(r'(AS|PT)_[0-9a-fA-F]{2}_[0-9]{2}', str(slot)) is not None
+
 def get_slot(slot, sensor_id):
     '''
     Blueprint channels to fill for a hardware slot. An AS slot holds an Alphasense
     sensor or an AFE board (its PT1000, for EC_SENSOR_TEMP), a PT slot an AFE board
     '''
-    if not slot.startswith(('AS', 'PT')):
+    if not is_slot(slot):
         return None
     if is_afe_board(sensor_id) or slot.startswith('PT'):
         return get_pt_temp(slot, sensor_id)

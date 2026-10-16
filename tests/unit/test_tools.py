@@ -60,9 +60,10 @@ def test_afe_board_in_an_as_slot():
     ]
 
 
+@pytest.mark.parametrize('slot', ['XX_48_01', 'ASX_48_32', 'AS', 'AS_48', 'PT_49_2', 'AS_48_32_1'])
 @pytest.mark.parametrize('sensor_id', ['212830246', '17-000123'])
-def test_unknown_slot(sensor_id):
-    assert get_slot('XX_48_01', sensor_id) is None
+def test_unknown_slot(slot, sensor_id):
+    assert get_slot(slot, sensor_id) is None
 
 
 @pytest.mark.parametrize('string, expected', [
