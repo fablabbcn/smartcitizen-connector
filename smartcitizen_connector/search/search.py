@@ -36,7 +36,7 @@ def global_search(value: Optional[str] = None) -> DataFrame:
     df = DataFrame()
     isn = True
     while isn:
-        r = get(url, headers = headers)
+        r = get(url, headers = headers, timeout = config._timeout)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)
@@ -130,7 +130,7 @@ def search_by_query(endpoint: Optional[str] = 'devices',
     total = None
     logger.info(f'Getting: {url}')
     while isn:
-        r = get(url, headers = headers)
+        r = get(url, headers = headers, timeout = config._timeout)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)

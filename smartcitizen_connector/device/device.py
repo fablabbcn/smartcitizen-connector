@@ -607,7 +607,7 @@ class SCDevice:
                 if delay_between_posts is not None:
                     time.sleep(delay_between_posts)
                 headers['Content-type']='application/json'
-                response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers)
+                response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers, timeout = config._timeout)
 
                 if response.status_code == 200 or response.status_code == 201:
                     post_ok = True
@@ -654,7 +654,7 @@ class SCDevice:
 
         logger.info(f'Posting postprocessing_attributes:\n {post} to {self.url}')
         response = patch(f'{self.url}/',
-                         data = dumps(post), headers = headers)
+                         data = dumps(post), headers = headers, timeout = config._timeout)
 
         if response.status_code == 200 or response.status_code == 201:
             logger.info(f"Postprocessing posted")
@@ -758,7 +758,7 @@ def get_devices():
     result = list()
     url = config.DEVICES_URL
     while isn:
-        r = get(url)
+        r = get(url, timeout = config._timeout)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)
@@ -776,7 +776,7 @@ def get_world_map():
     result = list()
     url = config.WORLD_MAP_URL
     while isn:
-        r = get(url)
+        r = get(url, timeout = config._timeout)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)
