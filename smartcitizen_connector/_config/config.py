@@ -62,8 +62,9 @@ class Config():
     # e.g. 10-002911. The code does not tell the board model
     _afe_board_codes = ('10', '12', '17')
 
-    # Requests to the API: seconds to connect and to wait for a response. Generous, so that slow
-    # responses still arrive, but a request never hangs forever (e.g. a sync with no end)
+    # Requests to the API: seconds to connect, and seconds without receiving data (not a deadline for
+    # the whole request). Generous, so that slow responses still arrive, but a request the API stops
+    # answering does not hang forever (e.g. a sync with no end)
     _timeout = (30, 300)
 
     _max_retries = 3

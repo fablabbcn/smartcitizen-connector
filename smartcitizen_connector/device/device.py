@@ -6,6 +6,7 @@ from smartcitizen_connector.tools import logger, safe_get, tf, \
     get_pt_temp, get_slot, find_by_field, dict_fmerge, get_request_headers
 from typing import Optional, List, Dict
 from requests import get, post, patch
+from requests.exceptions import RequestException
 from aiohttp_retry import RetryClient, ExponentialRetry
 from aiohttp import ClientResponseError, ClientResponse, ClientSession, ContentTypeError
 from pandas import DataFrame, to_datetime
@@ -499,6 +500,9 @@ class SCDevice:
                 item = find_by_field(self.json.data.sensors + self._channels, column, 'name')
                 if item is not None:
                     _columns.append(item)
+                else:
+                    logger.warning(f'{column} is not a sensor or channel of the device')
+                    self.not_posted[column] = 'not a sensor or channel'
         else:
             _columns = self.json.data.sensors + self._channels
 
@@ -517,11 +521,11 @@ class SCDevice:
 
             tasks, names = [], []
             for column in _columns:
-                if column.name not in _rename:
-                    missing(f'{column.name} not in data')
-                    continue
-                if _rename[column.name] not in self.data:
-                    missing(f'{_rename[column.name]} not in data')
+                if column.name not in _rename or _rename[column.name] not in self.data:
+                    missing(f'{_rename.get(column.name, column.name)} not in data')
+                    # Only for columns asked for by name: blueprint channels without data are expected
+                    if type(columns) is list:
+                        self.not_posted[column.name] = 'not in data'
                     continue
                 if column.id is None:
                     # E.g. intermediate channels (working and auxiliary electrodes): they are not posted
@@ -533,8 +537,14 @@ class SCDevice:
                 # Rename to ID to be able to post
                 logger.info(f'Adding {_rename[column.name]} ({column.id}) to post list')
                 df.rename(columns={_rename[column.name]: column.id}, inplace = True)
+                # The readings post_datum posts: after the same cleaning
+                readings = len(clean(df, clean_na, how = 'all'))
+                if not readings:
+                    logger.info(f'{column.name} has no readings: not posted')
+                    self.not_posted[column.name] = 'no readings'
+                    continue
                 url = f'{self.url}/readings'
-                names.append((column.name, column.id, int(df.notna().any(axis = 1).sum())))
+                names.append((column.name, column.id, readings))
                 # Append task
                 tasks.append(asyncio.ensure_future(self.post_datum(session, self._headers, url, df,
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
@@ -621,26 +631,27 @@ class SCDevice:
 
             post_ok = False
             retries = 0
+            outcome = 'no attempts'
 
             while post_ok == False and retries < max_retries:
                 if delay_between_posts is not None:
                     time.sleep(delay_between_posts)
                 headers['Content-type']='application/json'
-                response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers, timeout = config._timeout)
-
-                if response.status_code == 200 or response.status_code == 201:
-                    post_ok = True
-                    break
+                try:
+                    response = post(url, data = dumps(payload, cls = NpEncoder), headers = headers, timeout = config._timeout)
+                except RequestException as error:
+                    # E.g. a timeout: retried like an error response
+                    outcome = f'{type(error).__name__}: {error}'
                 else:
-                    retries += 1
-                    logger.warning (f'Chunk ({i+1}/{len(chunked_dfs)}) post failed. \
-                            API responded {response.status_code}.\
-                            Retrying ({retries}/{max_retries}')
+                    if response.status_code == 200 or response.status_code == 201:
+                        post_ok = True
+                        break
+                    outcome = f'API responded {response.status_code}'
+                retries += 1
+                logger.warning(f'Chunk ({i+1}/{len(chunked_dfs)}) post failed. {outcome}. Retrying ({retries}/{max_retries})')
 
             if (not post_ok) or (retries == max_retries):
-                logger.error (f'Chunk ({i+1}/{len(chunked_dfs)}) post failed. \
-                        API responded {response.status_code}.\
-                        Reached max_retries')
+                logger.error(f'Chunk ({i+1}/{len(chunked_dfs)}) post failed. {outcome}. Reached max_retries')
                 return False
 
         return True

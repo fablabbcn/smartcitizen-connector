@@ -247,3 +247,52 @@ def test_posting_says_what_is_posted(blueprint, hardware, monkeypatch, caplog):
     assert 'Dry run, would post: NO2 (sensor 123, 1 readings)' in caplog.text
     # Channels of the blueprint without data, and the ones without an id, are expected: not warnings
     assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []
+
+
+def posting_device(blueprint, hardware, monkeypatch, data):
+    from pandas import DataFrame, date_range
+
+    monkeypatch.setenv('SC_BEARER', 'token')
+    device = make_device(blueprint, hardware)
+    device.__get_channels__()
+    device.url, device._headers = 'https://api.example/v0/devices/1', {}
+    next(item for item in device._channels if item.name == 'NO2').id = 123
+    device.data = DataFrame(data, index=date_range('2026-01-01', periods=2, freq='min', tz='UTC'))
+    return device
+
+
+def test_a_post_that_times_out_fails(blueprint, hardware, monkeypatch):
+    import asyncio
+    from requests.exceptions import ReadTimeout
+    from smartcitizen_connector.device import device as device_module
+
+    def post(*args, **kwargs):
+        raise ReadTimeout('read timed out')
+
+    monkeypatch.setattr(device_module, 'post', post)
+    device = posting_device(blueprint, hardware, monkeypatch, {'NO2': [1.0, 2.0]})
+
+    assert asyncio.run(device.post_data(columns='channels', max_retries=2)) is False
+    assert device.posted == {}
+    assert device.not_posted == {'NO2': 'post failed'}
+
+
+def test_columns_without_readings_are_not_posted(blueprint, hardware, monkeypatch):
+    import asyncio
+
+    device = posting_device(blueprint, hardware, monkeypatch, {'NO2': [None, None]})
+
+    assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is True
+    assert device.posted == {}
+    assert device.not_posted == {'NO2': 'no readings'}
+
+
+def test_columns_asked_for_by_name_say_why_they_are_not_posted(blueprint, hardware, monkeypatch):
+    import asyncio
+
+    device = posting_device(blueprint, hardware, monkeypatch, {'NO2': [1.0, 2.0]})
+    device.json.data = SimpleNamespace(sensors=[])
+
+    assert asyncio.run(device.post_data(columns=['NO2', 'NO2_AE', 'CO'], dry_run=True)) is True
+    assert device.posted == {'NO2': {'id': 123, 'readings': 2}}
+    assert device.not_posted == {'NO2_AE': 'not in data', 'CO': 'not a sensor or channel'}
