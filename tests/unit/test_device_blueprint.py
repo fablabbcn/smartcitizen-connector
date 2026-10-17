@@ -224,3 +224,26 @@ def test_posting_nothing_is_said(blueprint, hardware, monkeypatch, caplog):
     # Devices with only channels without an id processed (e.g. CO2) have nothing to post
     assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is True
     assert 'Nothing to post' in caplog.text
+
+
+def test_posting_says_what_is_posted(blueprint, hardware, monkeypatch, caplog):
+    import asyncio
+    import logging
+    from pandas import DataFrame, date_range
+
+    monkeypatch.setenv('SC_BEARER', 'token')
+    device = make_device(blueprint, hardware)
+    device.__get_channels__()
+    device.url, device._headers = 'https://api.example/v0/devices/1', {}
+    next(item for item in device._channels if item.name == 'NO2').id = 123
+    device.data = DataFrame({'NO2_WE': [1.0, 2.0], 'NO2': [3.0, None]},
+                            index=date_range('2026-01-01', periods=2, freq='min', tz='UTC'))
+
+    with caplog.at_level(logging.INFO, logger='smartcitizen_connector'):
+        assert asyncio.run(device.post_data(columns='channels', dry_run=True)) is True
+
+    assert device.posted == {'NO2': {'id': 123, 'readings': 1}}
+    assert device.not_posted == {'NO2_WE': 'no sensor id'}
+    assert 'Dry run, would post: NO2 (sensor 123, 1 readings)' in caplog.text
+    # Channels of the blueprint without data, and the ones without an id, are expected: not warnings
+    assert [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING] == []

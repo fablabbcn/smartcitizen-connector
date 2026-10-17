@@ -473,6 +473,10 @@ class SCDevice:
                 True if the data was posted succesfully
         '''
 
+        # What was posted (or would be, in a dry run): {name: {'id': sensor id, 'readings': n}}, and
+        # the columns in the data that were not: {name: why}
+        self.posted, self.not_posted = {}, {}
+
         if self.data is None:
             logger.error('No data to post, ignoring')
             return False
@@ -506,18 +510,23 @@ class SCDevice:
         else:
             _rename = rename
 
+        # Blueprints list more channels than a device has: only a column asked for by name is missing
+        missing = logger.warning if type(columns) is list else logger.info
+
         async with ClientSession() as session:
 
-            tasks = []
+            tasks, names = [], []
             for column in _columns:
                 if column.name not in _rename:
-                    logger.warning(f'{column.name} not in data')
+                    missing(f'{column.name} not in data')
                     continue
                 if _rename[column.name] not in self.data:
-                    logger.warning(f'{_rename[column.name]} not in data')
+                    missing(f'{_rename[column.name]} not in data')
                     continue
                 if column.id is None:
-                    logger.warning(f'{column.name} has no id')
+                    # E.g. intermediate channels (working and auxiliary electrodes): they are not posted
+                    logger.info(f'{column.name} has no sensor id: not posted')
+                    self.not_posted[column.name] = 'no sensor id'
                     continue
                 # Get only post data
                 df = DataFrame(self.data[_rename[column.name]]).copy()
@@ -525,6 +534,7 @@ class SCDevice:
                 logger.info(f'Adding {_rename[column.name]} ({column.id}) to post list')
                 df.rename(columns={_rename[column.name]: column.id}, inplace = True)
                 url = f'{self.url}/readings'
+                names.append((column.name, column.id, int(df.notna().any(axis = 1).sum())))
                 # Append task
                 tasks.append(asyncio.ensure_future(self.post_datum(session, self._headers, url, df,
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
@@ -535,6 +545,15 @@ class SCDevice:
                 logger.warning('Nothing to post: none of the columns is in the data with an id')
                 return True
             posts_ok = await asyncio.gather(*tasks)
+
+        for (name, sensor_id, readings), ok in zip(names, posts_ok):
+            if ok is False:
+                self.not_posted[name] = 'post failed'
+            else:
+                self.posted[name] = {'id': sensor_id, 'readings': readings}
+        if self.posted:
+            logger.info(('Dry run, would post: ' if dry_run else 'Posted: ') + ', '.join(
+                f"{name} (sensor {item['id']}, {item['readings']} readings)" for name, item in self.posted.items()))
 
         return not(False in posts_ok)
 
