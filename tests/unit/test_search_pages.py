@@ -23,7 +23,9 @@ def pages(monkeypatch):
     requested = []
 
     def serve(*pages):
-        def get(url, headers=None):
+        def get(url, headers=None, timeout=None):
+            # A request without a timeout can hang forever
+            assert timeout is not None
             requested.append(url)
             return pages[len(requested) - 1]
         monkeypatch.setattr(search_module, 'get', get)

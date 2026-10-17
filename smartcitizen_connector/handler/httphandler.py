@@ -1,6 +1,7 @@
 from requests import get, patch, post, delete
 from os import environ
 from smartcitizen_connector.tools import logger
+from smartcitizen_connector._config import config
 from typing import Optional
 import json
 
@@ -31,7 +32,7 @@ class HttpHandler:
         return True
 
     def get(self):
-        r = get(self.url)
+        r = get(self.url, timeout = config._timeout)
         r.raise_for_status()
         return r
 
@@ -39,7 +40,7 @@ class HttpHandler:
         r = patch(self.url,
             data=self.model.json(include=property,
                 exclude_none=True),
-            headers = self.headers
+            headers = self.headers, timeout = config._timeout
         )
         r.raise_for_status()
         return r
@@ -47,14 +48,14 @@ class HttpHandler:
     def post(self):
         r = post(self.path,
             data=self.model.json(exclude_none=True),
-            headers = self.headers)
+            headers = self.headers, timeout = config._timeout)
 
         r.raise_for_status()
         return r
 
     def delete(self):
         r = delete(self.url,
-            headers = self.headers)
+            headers = self.headers, timeout = config._timeout)
 
         r.raise_for_status()
         return r
