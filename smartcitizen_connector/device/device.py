@@ -537,18 +537,20 @@ class SCDevice:
                 # Rename to ID to be able to post
                 logger.info(f'Adding {_rename[column.name]} ({column.id}) to post list')
                 df.rename(columns={_rename[column.name]: column.id}, inplace = True)
-                # The readings post_datum posts: after the same cleaning
-                readings = len(clean(df, clean_na, how = 'all'))
+                # The readings post_datum posts: rows with a value after the same cleaning
+                readings = int(clean(df, clean_na, how = 'all').notna().any(axis = 1).sum())
                 if not readings:
                     logger.info(f'{column.name} has no readings: not posted')
                     self.not_posted[column.name] = 'no readings'
                     continue
                 url = f'{self.url}/readings'
-                names.append((column.name, column.id, readings))
+                # Readings of the chunks the API accepted
+                sent = []
+                names.append((column.name, column.id, readings, sent))
                 # Append task
                 tasks.append(asyncio.ensure_future(self.post_datum(session, self._headers, url, df,
                     clean_na = clean_na, chunk_size = chunk_size, dry_run = dry_run,
-                    max_retries = max_retries, delay_between_posts=delay_between_posts)))
+                    max_retries = max_retries, delay_between_posts=delay_between_posts, sent = sent)))
 
             if not tasks:
                 # E.g. only channels without an id were processed: nothing to post is fine
@@ -556,9 +558,14 @@ class SCDevice:
                 return True
             posts_ok = await asyncio.gather(*tasks)
 
-        for (name, sensor_id, readings), ok in zip(names, posts_ok):
+        for (name, sensor_id, readings, sent), ok in zip(names, posts_ok):
             if ok is False:
-                self.not_posted[name] = 'post failed'
+                # Chunks before the one that failed were posted
+                if sum(sent):
+                    self.posted[name] = {'id': sensor_id, 'readings': sum(sent)}
+                    self.not_posted[name] = f'post failed after {sum(sent)} of {readings} readings'
+                else:
+                    self.not_posted[name] = 'post failed'
             else:
                 self.posted[name] = {'id': sensor_id, 'readings': readings}
         if self.posted:
@@ -567,7 +574,7 @@ class SCDevice:
 
         return not(False in posts_ok)
 
-    async def post_datum(self, session, headers, url, df, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay_between_posts = None):
+    async def post_datum(self, session, headers, url, df, clean_na = 'drop', chunk_size = 500, dry_run = False, max_retries = 2, delay_between_posts = None, sent = None):
         '''
             POST external pandas.DataFrame to the SmartCitizen API
             Parameters
@@ -591,6 +598,9 @@ class SCDevice:
                 max_retries: int
                     2
                     Maximum number of retries per chunk
+                sent: list, optional
+                    None
+                    Filled with the readings of each chunk the API accepted
             Returns
             -------
                 True if the data was posted succesfully
@@ -645,6 +655,8 @@ class SCDevice:
                 else:
                     if response.status_code == 200 or response.status_code == 201:
                         post_ok = True
+                        if sent is not None:
+                            sent.append(sum(1 for item in payload['data'] if item['sensors']))
                         break
                     outcome = f'API responded {response.status_code}'
                 retries += 1

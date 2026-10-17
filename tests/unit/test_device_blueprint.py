@@ -296,3 +296,27 @@ def test_columns_asked_for_by_name_say_why_they_are_not_posted(blueprint, hardwa
     assert asyncio.run(device.post_data(columns=['NO2', 'NO2_AE', 'CO'], dry_run=True)) is True
     assert device.posted == {'NO2': {'id': 123, 'readings': 2}}
     assert device.not_posted == {'NO2_AE': 'not in data', 'CO': 'not a sensor or channel'}
+
+
+def test_a_partial_post_says_what_was_posted(blueprint, hardware, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace as Response
+    from smartcitizen_connector.device import device as device_module
+
+    responses = iter([Response(status_code=200), Response(status_code=500)])
+    monkeypatch.setattr(device_module, 'post', lambda *args, **kwargs: next(responses))
+    device = posting_device(blueprint, hardware, monkeypatch, {'NO2': [1.0, 2.0]})
+
+    # Chunks of one reading: the first is posted, the second fails
+    assert asyncio.run(device.post_data(columns='channels', chunk_size=1, max_retries=1)) is False
+    assert device.posted == {'NO2': {'id': 123, 'readings': 1}}
+    assert device.not_posted == {'NO2': 'post failed after 1 of 2 readings'}
+
+
+def test_filled_columns_without_values_are_not_posted(blueprint, hardware, monkeypatch):
+    import asyncio
+
+    device = posting_device(blueprint, hardware, monkeypatch, {'NO2': [None, None]})
+
+    assert asyncio.run(device.post_data(columns='channels', clean_na='fill', dry_run=True)) is True
+    assert device.not_posted == {'NO2': 'no readings'}
