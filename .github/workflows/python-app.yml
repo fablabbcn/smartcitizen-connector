@@ -19,7 +19,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        # The lowest pandas and numpy allowed in one version, the latest in the others
+        include:
+          - python-version: "3.11"
+            pandas: "2.2.*"
+            numpy: "1.26.*"
     steps:
     - uses: actions/checkout@v7
       with:
@@ -35,6 +40,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install .
+    - name: Install the lowest pandas and numpy
+      if: matrix.pandas
+      run: pip install "pandas==${{ matrix.pandas }}" "numpy==${{ matrix.numpy }}"
     - name: Test with pytest
       run: |
         pytest
