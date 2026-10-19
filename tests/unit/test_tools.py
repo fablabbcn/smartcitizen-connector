@@ -105,7 +105,7 @@ def test_find_by_field():
     ('10S', '10s'),
     ('1D', '1d'),
     ('1X', None),
-    # Units of pandas 2.2 and 3
+    # Units accepted by pandas 2.2 and 3
     ('1min', '1m'),
     ('1h', '1h'),
     ('10s', '10s'),
@@ -123,7 +123,7 @@ def test_pandas_takes_every_frequency(unit):
 
     readings = Series(1.0, index=date_range('2026-01-01', periods=3, freq='1ms', tz='UTC'))
     with warnings.catch_warnings():
-        # pandas 2.2 warns about the units that pandas 3 does not take
+        # pandas 2.2 warns about the units that pandas 3 rejects
         warnings.simplefilter('error')
         readings.resample(pandas_freq(f'10{unit}')).mean()
 

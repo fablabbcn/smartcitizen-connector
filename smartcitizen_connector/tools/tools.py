@@ -25,21 +25,24 @@ freq_2_rollup_lut = (
     ['ms', 'ms']
 )
 
-# Frequency units that pandas 2.2 deprecated and pandas 3 does not take, as pandas names them now
+# Frequency units deprecated in pandas 2.2 and removed in pandas 3, mapped to their current names
 pandas_freq_units = {'A': 'YE', 'Y': 'YE', 'Q': 'QE', 'M': 'ME', 'BA': 'BYE', 'BY': 'BYE', 'BQ': 'BQE', 'BM': 'BME',
                      'H': 'h', 'T': 'min', 'Min': 'min', 'S': 's', 'L': 'ms', 'U': 'us', 'N': 'ns'}
 
 def split_freq(freq):
-    ''' '10Min' -> ('10', 'Min') '''
+    ''' Splits a frequency into its number and its unit: '10Min' -> ('10', 'Min') '''
     unit = freq.lstrip('0123456789')
     return freq[:len(freq) - len(unit)], unit
 
 def pandas_freq(freq):
-    ''' freq with the units of pandas 2.2 and 3 (1H -> 1h, 10Min -> 10min, 1M -> 1ME, 1A-JUN -> 1YE-JUN) '''
+    '''
+    Returns freq with the units accepted by pandas 2.2 and 3
+    (1H -> 1h, 10Min -> 10min, 1M -> 1ME, 1A-JUN -> 1YE-JUN)
+    '''
     if not isinstance(freq, str):
         return freq
     number, unit = split_freq(freq)
-    # Anchored frequencies keep their anchor (-JUN)
+    # Anchored frequencies retain their anchor (-JUN)
     unit, dash, anchor = unit.partition('-')
     return number + pandas_freq_units.get(unit, unit) + dash + anchor
 
@@ -73,7 +76,7 @@ def convert_freq_to_rollup(freq):
     -------
         rollup: str rollup from SC
     """
-    # Units of pandas 2.2 and 3, and the ones before (1H and 1h)
+    # Accepts both the current units and those removed in pandas 3 (1h and 1H)
     rollups = {split_freq(pandas_freq(item[0]))[1]: item[1] for item in freq_2_rollup_lut}
     rollup_value, freq_unit = split_freq(pandas_freq(freq))
 
