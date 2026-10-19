@@ -48,10 +48,10 @@ def device():
     return device
 
 
-def get_datum(device):
+def get_datum(device, resample=False, frequency='1Min'):
     async def request():
         # Semaphore created inside the loop: Python < 3.10 binds it to the current loop
-        return await device.get_datum(asyncio.Semaphore(1), None, 'url', None, 55, False, '1Min', True)
+        return await device.get_datum(asyncio.Semaphore(1), None, 'url', None, 55, resample, frequency, True)
 
     return asyncio.run(request())
 
@@ -63,6 +63,15 @@ def test_readings(device, respond):
 
     assert df['TEMP'].tolist() == [20.0, 21.0]
     assert device.failed_sensors == []
+
+
+def test_readings_resampled_with_the_units_before_pandas_3(device, respond):
+    respond({'readings': [['2026-01-01T00:00:00Z', 20.0], ['2026-01-01T00:30:00Z', 22.0],
+                          ['2026-01-01T01:00:00Z', 30.0]]})
+
+    df = get_datum(device, resample=True, frequency='1H')
+
+    assert df['TEMP'].tolist() == [21.0, 30.0]
 
 
 def test_sensor_without_data_is_not_failed(device, respond):

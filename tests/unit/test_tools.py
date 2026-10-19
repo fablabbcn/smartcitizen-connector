@@ -4,8 +4,8 @@ from pandas import DataFrame
 
 from smartcitizen_connector.models import Export
 from smartcitizen_connector.tools import (clean, convert_freq_to_rollup, dict_fmerge,
-                                          find_by_field, get_alphasense, get_pt_temp, get_slot,
-                                          process_headers, url_checker)
+                                          find_by_field, freq_2_rollup_lut, get_alphasense, get_pt_temp,
+                                          get_slot, pandas_freq, process_headers, url_checker)
 
 
 @pytest.mark.parametrize('sensor_id, pollutant, electrode', [
@@ -105,9 +105,35 @@ def test_find_by_field():
     ('10S', '10s'),
     ('1D', '1d'),
     ('1X', None),
+    # Units of pandas 2.2 and 3
+    ('1min', '1m'),
+    ('1h', '1h'),
+    ('10s', '10s'),
+    ('1ME', '1M'),
+    ('1YE', '1y'),
 ])
 def test_convert_freq_to_rollup(freq, rollup):
     assert convert_freq_to_rollup(freq) == rollup
+
+
+@pytest.mark.parametrize('unit', [item[0] for item in freq_2_rollup_lut])
+def test_pandas_takes_every_frequency(unit):
+    import warnings
+    from pandas import Series, date_range
+
+    readings = Series(1.0, index=date_range('2026-01-01', periods=3, freq='1ms', tz='UTC'))
+    with warnings.catch_warnings():
+        # pandas 2.2 warns about the units that pandas 3 does not take
+        warnings.simplefilter('error')
+        readings.resample(pandas_freq(f'10{unit}')).mean()
+
+
+def test_pandas_freq():
+    assert pandas_freq('10Min') == '10min'
+    assert pandas_freq('1H') == '1h'
+    assert pandas_freq('1M') == '1ME'
+    assert pandas_freq('1D') == '1D'
+    assert pandas_freq(None) is None
 
 
 def test_clean_drop():

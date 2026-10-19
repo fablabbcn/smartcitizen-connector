@@ -25,6 +25,22 @@ freq_2_rollup_lut = (
     ['ms', 'ms']
 )
 
+# Frequency units that pandas 2.2 deprecated and pandas 3 does not take, as pandas names them now
+pandas_freq_units = {'A': 'YE', 'Y': 'YE', 'M': 'ME', 'H': 'h', 'T': 'min', 'Min': 'min', 'S': 's', 'L': 'ms',
+                     'U': 'us', 'N': 'ns'}
+
+def split_freq(freq):
+    ''' '10Min' -> ('10', 'Min') '''
+    unit = freq.lstrip('0123456789')
+    return freq[:len(freq) - len(unit)], unit
+
+def pandas_freq(freq):
+    ''' freq with the units of pandas 2.2 and 3 (1H -> 1h, 10Min -> 10min, 1M -> 1ME) '''
+    if not isinstance(freq, str):
+        return freq
+    number, unit = split_freq(freq)
+    return number + pandas_freq_units.get(unit, unit)
+
 def clean(df, clean_na = None, how = 'all'):
     """
     Helper function for cleaning nan in a pandas.   Parameters
@@ -55,27 +71,13 @@ def convert_freq_to_rollup(freq):
     -------
         rollup: str rollup from SC
     """
-    rollup_unit = None
-    # Convert freq from pandas to SC API's
-    for index, letter in enumerate(freq):
-        try:
-            aux = int(letter)
-        except:
-            index_first = index
-            letter_first = letter
-            rollup_value = freq[:index_first]
-            freq_unit = freq[index_first:]
-            break
+    # Units of pandas 2.2 and 3, and the ones before (1H and 1h)
+    rollups = {split_freq(pandas_freq(item[0]))[1]: item[1] for item in freq_2_rollup_lut}
+    rollup_value, freq_unit = split_freq(pandas_freq(freq))
 
-    for item in freq_2_rollup_lut:
-        if item[0] == freq_unit:
-            rollup_unit = item[1]
-            break
-
-    if rollup_unit is None:
+    if freq_unit not in rollups:
         return None
-    rollup = rollup_value + rollup_unit
-    return rollup
+    return rollup_value + rollups[freq_unit]
 
 def localise_date(date, timezone, tzaware=True):
     """
