@@ -26,7 +26,7 @@ def get_measurements():
     result = list()
     url = config.MEASUREMENTS_URL
     while isn:
-        r = get(url)
+        r = get(url, timeout = config._timeout)
         r.raise_for_status()
         # If status code OK, retrieve data
         h = process_headers(r.headers)

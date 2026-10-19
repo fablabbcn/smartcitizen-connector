@@ -43,7 +43,7 @@ def clean(df, clean_na = None, how = 'all'):
         if clean_na == 'drop':
             df.dropna(axis = 0, how = how, inplace = True)
         elif clean_na == 'fill':
-            df = df.fillna(method = 'bfill').fillna(method = 'ffill')
+            df = df.bfill().ffill()
     return df
 
 def convert_freq_to_rollup(freq):
@@ -185,7 +185,7 @@ def process_headers(headers):
 def safe_get(url, headers = None):
     for n in range(config._max_retries):
         try:
-            r = get(url, headers = headers)
+            r = get(url, headers = headers, timeout = config._timeout)
             r.raise_for_status()
         except HTTPError as exc:
             code = exc.response.status_code
