@@ -26,8 +26,8 @@ freq_2_rollup_lut = (
 )
 
 # Frequency units that pandas 2.2 deprecated and pandas 3 does not take, as pandas names them now
-pandas_freq_units = {'A': 'YE', 'Y': 'YE', 'M': 'ME', 'H': 'h', 'T': 'min', 'Min': 'min', 'S': 's', 'L': 'ms',
-                     'U': 'us', 'N': 'ns'}
+pandas_freq_units = {'A': 'YE', 'Y': 'YE', 'Q': 'QE', 'M': 'ME', 'BA': 'BYE', 'BY': 'BYE', 'BQ': 'BQE', 'BM': 'BME',
+                     'H': 'h', 'T': 'min', 'Min': 'min', 'S': 's', 'L': 'ms', 'U': 'us', 'N': 'ns'}
 
 def split_freq(freq):
     ''' '10Min' -> ('10', 'Min') '''
@@ -35,11 +35,13 @@ def split_freq(freq):
     return freq[:len(freq) - len(unit)], unit
 
 def pandas_freq(freq):
-    ''' freq with the units of pandas 2.2 and 3 (1H -> 1h, 10Min -> 10min, 1M -> 1ME) '''
+    ''' freq with the units of pandas 2.2 and 3 (1H -> 1h, 10Min -> 10min, 1M -> 1ME, 1A-JUN -> 1YE-JUN) '''
     if not isinstance(freq, str):
         return freq
     number, unit = split_freq(freq)
-    return number + pandas_freq_units.get(unit, unit)
+    # Anchored frequencies keep their anchor (-JUN)
+    unit, dash, anchor = unit.partition('-')
+    return number + pandas_freq_units.get(unit, unit) + dash + anchor
 
 def clean(df, clean_na = None, how = 'all'):
     """

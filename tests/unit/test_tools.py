@@ -136,6 +136,15 @@ def test_pandas_freq():
     assert pandas_freq(None) is None
 
 
+@pytest.mark.parametrize('freq, expected', [('1Q', '1QE'), ('1A-JUN', '1YE-JUN'), ('1Q-FEB', '1QE-FEB'),
+                                            ('1BA', '1BYE'), ('1BQ', '1BQE'), ('1BM', '1BME')])
+def test_pandas_freq_of_anchored_and_business_frequencies(freq, expected):
+    from pandas import Series, date_range
+
+    assert pandas_freq(freq) == expected
+    Series(1.0, index=date_range('2026-01-01', periods=400, freq='1D', tz='UTC')).resample(pandas_freq(freq)).mean()
+
+
 def test_clean_drop():
     df = DataFrame({'a': [1, nan, nan], 'b': [1, 2, nan]})
 
