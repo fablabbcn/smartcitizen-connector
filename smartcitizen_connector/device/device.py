@@ -3,7 +3,7 @@ from smartcitizen_connector.models import (Device, ReducedDevice, HardwarePostpr
 from smartcitizen_connector._config import config
 from smartcitizen_connector.tools import logger, safe_get, tf, \
     convert_freq_to_rollup, clean, localise_date, url_checker, process_headers, get_alphasense, \
-    get_pt_temp, get_slot, find_by_field, dict_fmerge, get_request_headers
+    get_pt_temp, get_slot, find_by_field, dict_fmerge, get_request_headers, pandas_freq
 from typing import Optional, List, Dict
 from requests import get, post, patch
 from requests.exceptions import RequestException
@@ -337,7 +337,7 @@ class SCDevice:
                 df_sensor = df_sensor.astype(float, errors='ignore')
                 # Resample
                 if (resample):
-                    df_sensor = df_sensor.resample(frequency).mean()
+                    df_sensor = df_sensor.resample(pandas_freq(frequency)).mean()
 
                 return df_sensor
 
