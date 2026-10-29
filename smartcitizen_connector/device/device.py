@@ -67,7 +67,7 @@ def get_blueprint(name):
         logger.warning(f'Blueprint {name} could not be loaded')
         return None
     if not isinstance(blueprint, dict) or not isinstance(blueprint.get('meta') or {}, dict) \
-            or not isinstance(blueprint.get('channels', []), list):
+            or not isinstance(blueprint.get('channels'), list):
         logger.warning(f'Blueprint {name} is not a valid blueprint')
         return None
     return blueprint

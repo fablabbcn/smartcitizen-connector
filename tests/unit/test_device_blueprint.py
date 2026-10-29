@@ -412,7 +412,7 @@ def test_unknown_blueprint_kind():
 
 
 @pytest.mark.parametrize('body', [['not', 'a', 'blueprint'], {'meta': 'process', 'channels': []},
-                                  {'meta': {}, 'channels': 'NO2'}])
+                                  {'meta': {}, 'channels': 'NO2'}, {'meta': {'kind': 'process'}}])
 def test_an_invalid_blueprint_is_left_out(monkeypatch, blueprint, hardware, body):
     from smartcitizen_connector.device import device as device_module
 
