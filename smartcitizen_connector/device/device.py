@@ -12,7 +12,7 @@ from aiohttp import ClientResponseError, ClientResponse, ClientSession, ContentT
 from pandas import DataFrame, to_datetime
 from datetime import datetime, timezone
 from os import environ
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 import re
 import sys
 import json
@@ -35,32 +35,66 @@ class NpEncoder(JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-# Files of the smartcitizen-data repository on GitHub, in any branch (branches can contain "/")
-SMARTCITIZEN_DATA_URL = re.compile(
-    r'^https?://(?:raw\.githubusercontent\.com/fablabbcn/smartcitizen-data/.+?'
-    r'|github\.com/fablabbcn/smartcitizen-data/(?:blob|raw)/.+?)'
-    r'/(?P<folder>hardware|blueprints)/(?P<name>[^/?#]+?)(?:\.json)?$')
+# Names of hardware and blueprints
+METADATA_NAME = re.compile(r'^[A-Za-z0-9_-]{1,64}$')
+
+# Kinds of blueprints, as in their meta.kind (process when missing). A hardware has at most one of each
+PROCESS, LONG, BACKUP = 'process', 'long', 'backup'
+BLUEPRINT_KINDS = (PROCESS, LONG, BACKUP)
 
 
-def to_base_url(url):
-    ''' Redirects smartcitizen-data hardware and blueprint urls to BASE_POSTPROCESSING_URL '''
-    match = SMARTCITIZEN_DATA_URL.match(url.strip()) if url else None
-    if match is None:
-        return url
-    return f"{config.BASE_POSTPROCESSING_URL}{match['folder']}/{match['name']}.json"
+def hardware_name(hardware_url):
+    '''
+    Name of the hardware of a postprocessing hardware_url: a bare name, or a url ending in
+    hardware/<name>.json (on any server). None if it is not one
+    '''
+    value = (hardware_url or '').strip()
+    if '/' in value:
+        path, _, value = value.rstrip('/').rpartition('/')
+        if path.rpartition('/')[2] != 'hardware':
+            return None
+    name = value.removesuffix('.json')
+    return name if METADATA_NAME.fullmatch(name) else None
 
 
-def check_blueprint(blueprint_url):
-    if blueprint_url is None or not blueprint_url:
-        logger.info('No blueprint url')
+def get_blueprint(name):
+    ''' Blueprint of BASE_POSTPROCESSING_URL by its name, or None (also if it is not a valid blueprint) '''
+    if not name:
         return None
-    blueprint_url = to_base_url(blueprint_url)
-    if url_checker(blueprint_url):
-        _blueprint = safe_get(blueprint_url).json()
-    else:
-        logger.info(f'No valid blueprint in url')
-        _blueprint = None
-    return _blueprint
+    try:
+        blueprint = safe_get(f'{config.BASE_POSTPROCESSING_URL}blueprints/{name}.json').json()
+    except Exception:
+        logger.warning(f'Blueprint {name} could not be loaded')
+        return None
+    if not isinstance(blueprint, dict) or not isinstance(blueprint.get('meta') or {}, dict) \
+            or not isinstance(blueprint.get('channels'), list):
+        logger.warning(f'Blueprint {name} is not a valid blueprint')
+        return None
+    # Its channels, checks and exports as the device fills them
+    try:
+        TypeAdapter(List[CalculatedChannel]).validate_python(blueprint['channels'])
+        TypeAdapter(List[Check]).validate_python(blueprint.get('checks', []))
+        TypeAdapter(List[Export]).validate_python(blueprint.get('exports', []))
+    except ValidationError as error:
+        logger.warning(f'Blueprint {name} is not a valid blueprint: {error.error_count()} errors')
+        return None
+    return blueprint
+
+
+def blueprint_kind(blueprint):
+    return (blueprint.get('meta') or {}).get('kind') or PROCESS
+
+
+def select_blueprint(blueprints, kind=None):
+    '''
+    Blueprint to process a device with, from {kind: (name, blueprint)} of its hardware: the one of
+    the kind requested or, without a kind, the process blueprint, else the long one. (None, None) if
+    there is none (e.g. a hardware that is only backed up)
+    '''
+    for item in ([kind] if kind is not None else [PROCESS, LONG]):
+        if item in blueprints:
+            return blueprints[item]
+    return None, None
 
 def check_postprocessing(postprocessing):
     # Postprocessing should be dict or Postprocessing Model
@@ -72,14 +106,12 @@ def check_postprocessing(postprocessing):
     else:
         _postprocessing = postprocessing
 
-    # Check the url in hardware
-    urls = url_checker(_postprocessing.hardware_url)
-    # If URL is empty, try prepending base url from config
-    if not urls:
-        tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{_postprocessing.hardware_url}.json"
-    else:
-        if len(urls)>1: logger.warning('URLs for postprocessing recipe are more than one, trying first')
-        tentative_url = to_base_url(urls[0])
+    # The hardware is always read by its name from BASE_POSTPROCESSING_URL, whatever server the url names
+    name = hardware_name(_postprocessing.hardware_url)
+    if name is None:
+        logger.warning(f'hardware_url {_postprocessing.hardware_url!r} is not a hardware name')
+        return '', None, False
+    tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{name}.json"
 
     logger.info(f'Device {_postprocessing.device_id} has postprocessing information')
 
@@ -111,7 +143,14 @@ def check_postprocessing(postprocessing):
 
 class SCDevice:
 
-    def __init__(self, id = None, params = None, check_postprocessing=True):
+    def __init__(self, id = None, params = None, check_postprocessing=True, blueprint_kind=None):
+        '''
+        Device of the Smart Citizen API. Its blueprint is one of the blueprints of its hardware
+        (postprocessing hardware_url): blueprint_kind selects it ('process' or 'long'). Without it,
+        the process blueprint, else the long one. The blueprint_url of the postprocessing is not used
+        '''
+        if blueprint_kind is not None and blueprint_kind not in BLUEPRINT_KINDS:
+            raise ValueError(f'Unknown blueprint kind {blueprint_kind}: one of {", ".join(BLUEPRINT_KINDS)}')
         if id is not None:
             self.id = id
         elif params is not None:
@@ -130,6 +169,10 @@ class SCDevice:
         self._exports: List[Export] = []
         # Set by the postprocessing checks; empty when they do not run (check_postprocessing=False)
         self._hardware_postprocessing = None
+        self._blueprint_kind = blueprint_kind
+        # Blueprints of the hardware: {kind: (name, blueprint)}
+        self._blueprints = {}
+        self._blueprint_name = None
         self._blueprint = None
         self._filled_properties = []
         self._properties = {}
@@ -190,27 +233,38 @@ class SCDevice:
             self._filled_properties.append('exports')
         self.__make_properties__()
 
-    def apply_blueprint(self, blueprint):
+    def apply_blueprint(self, blueprint, name=None):
         '''
-        Uses another blueprint (a dict, e.g. a long processing blueprint) with the hardware of
-        the device: its channels are filled with the sensors of each hardware version, as for the
+        Uses another blueprint (a dict, e.g. a long processing blueprint, and its name) with the hardware
+        of the device: its channels are filled with the sensors of each hardware version, as for the
         blueprint of the hardware. Returns True if the channels were filled from the hardware
         '''
         # Restored as it was if the blueprint cannot be filled (e.g. without channels)
-        names = ('_blueprint', '_channels', '_versions', '_checks', '_exports', '_filled_properties', '_properties')
-        previous = {name: getattr(self, name) for name in names}
+        names = ('_blueprint', '_blueprint_name', '_channels', '_versions', '_checks', '_exports',
+                 '_filled_properties', '_properties')
+        previous = {item: getattr(self, item, None) for item in names}
         self._blueprint = blueprint
+        self._blueprint_name = name
         try:
             self.__fill_blueprint__()
         except Exception:
-            for name, value in previous.items():
-                setattr(self, name, value)
+            for item, value in previous.items():
+                setattr(self, item, value)
             raise
         return 'channels' in self._filled_properties
 
     def __check_blueprint__(self):
-        self._blueprint = check_blueprint(self.blueprint_url)
-
+        ''' Loads the blueprints of the hardware and selects the one to process the device with '''
+        self._blueprints = {}
+        names = self._hardware_postprocessing.blueprints if self._hardware_postprocessing is not None else []
+        for name in names:
+            blueprint = get_blueprint(name)
+            if blueprint is not None:
+                self._blueprints[blueprint_kind(blueprint)] = (name, blueprint)
+        self._blueprint_name, self._blueprint = select_blueprint(self._blueprints, self._blueprint_kind)
+        if self._blueprint is None and names:
+            logger.info(f'No {self._blueprint_kind or "process or long"} blueprint in the hardware '
+                        f'({", ".join(names)})')
         return self._blueprint is not None
 
     def __check_postprocessing__(self):
@@ -224,6 +278,10 @@ class SCDevice:
     def __version_channels__(self, version):
         ''' Blueprint channels filled with the sensors of a hardware version '''
         channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
+        # The first channel of each name, as the lookups by name of the data
+        by_name = {}
+        for item in channels:
+            by_name.setdefault(item.name, item)
         for slot in version.ids or {}:
             channel = get_slot(slot, version.ids[slot])
             if channel is None:
@@ -231,9 +289,10 @@ class SCDevice:
                 continue
             for m in channel:
                 for key, value in m.items():
-                    item = find_by_field(channels, key, 'name')
+                    # Blueprints do not need a channel for every sensor of the hardware
+                    item = by_name.get(key)
                     if item is None:
-                        logger.warning(f'Item not found in blueprint channels: {key}')
+                        logger.info(f'Item not found in blueprint channels: {key}')
                         continue
                     item.kwargs = dict_fmerge(item.kwargs, value['kwargs'])
         return channels
@@ -675,8 +734,7 @@ class SCDevice:
 
             # Example postprocessing:
             # {
-            #   "blueprint_url": "https://github.com/fablabbcn/smartcitizen-data/blob/master/blueprints/sc_21_station_module.json",
-            #   "hardware_url": "https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/hardware/SCAS210001.json",
+            #   "hardware_url": "SCAS210001",
             #   "latest_postprocessing": "2020-10-29T08:35:23Z"
             # }
         '''
@@ -723,15 +781,18 @@ class SCDevice:
         return True
 
     @property
-    def blueprint_url(self):
-        if self.json.postprocessing is None:
-            return None
-        if url_checker(self.json.postprocessing.blueprint_url):
-            return self.json.postprocessing.blueprint_url
-        elif url_checker(self.json.postprocessing.hardware_url):
-            return self._hardware_postprocessing.blueprint_url
-        else:
-            return None
+    def blueprint_name(self):
+        ''' Name of the blueprint the device is processed with '''
+        return self._blueprint_name
+
+    @property
+    def blueprint_kind(self):
+        return blueprint_kind(self._blueprint) if self._blueprint is not None else None
+
+    @property
+    def blueprints(self):
+        ''' Blueprints of the hardware, by kind: {kind: name} '''
+        return {kind: name for kind, (name, _) in self._blueprints.items()}
 
     @property
     def blueprint(self):

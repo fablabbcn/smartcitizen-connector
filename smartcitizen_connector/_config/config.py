@@ -18,9 +18,9 @@ class Config():
     EXPERIMENTS_URL = API_URL + 'experiments/'
     USERS_URL = API_URL + 'users/'
     FRONTEND_URL = 'https://smartcitizen.me/kits/'
-    # Hardware and blueprints (e.g. flows: https://flows.smartcitizen.me/api/v1/)
+    # Hardware and blueprints, served by Smart Citizen Flows
     BASE_POSTPROCESSING_URL = os.environ.get('BASE_POSTPROCESSING_URL',
-        'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/').rstrip('/') + '/'
+        'https://flows.smartcitizen.me/api/v1/').rstrip('/') + '/'
     API_SEARCH_URL = API_URL + "search?q="
 
     # Alphasense sensor codes: first three digits of the serial number. A-series sensors go on AFE

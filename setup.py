@@ -16,7 +16,7 @@ PROJECT_URLS = {
 
 setup(
     name="smartcitizen-connector",
-    version="1.5.9",
+    version="1.6.0",
     description="Python connector to download information collected in SmartCitizen API",
     author="oscgonfer",
     license="GNU General Public License v3",
@@ -25,7 +25,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/fablabbcn/smartcitizen-connector",
     project_urls=PROJECT_URLS,
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     classifiers=[
         "Development Status :: 4 - Beta",
         'Intended Audience :: Education',
@@ -36,7 +36,6 @@ setup(
         "Operating System :: POSIX",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",

@@ -30,9 +30,9 @@ def blueprint():
 
 @pytest.fixture
 def hardware():
-    ''' Hardware file as stored in smartcitizen-data/hardware '''
+    ''' Hardware as served by flows '''
     return {
-        'blueprint_url': 'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json',
+        'blueprints': ['sc_air'],
         'description': '1SEN55-2ELEC-AFE',
         'versions': [
             {'ids': {'AS_48_32': '212830246', 'PT_49_23': '10-002911'}, 'from': '2024-04-01', 'to': None}

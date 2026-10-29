@@ -40,6 +40,16 @@ await d.get_data(freq = '1Min') # returns pandas dataframe
 print (d.data)
 ```
 
+- Hardware and blueprints
+
+A device with a `hardware_url` in its postprocessing is processed with the blueprints of its hardware, read from `BASE_POSTPROCESSING_URL` ([Smart Citizen Flows](https://flows.smartcitizen.me/api/v1/) by default). A hardware lists its blueprints by name, at most one of each kind: `process`, `long` and `backup`. `blueprint_kind` selects the one the device uses, which also defines the sensors to load. Without it, the `process` blueprint, else the `long` one. A hardware with only a `backup` blueprint has no channels to process. The `blueprint_url` of the device postprocessing is not used.
+
+```
+d = SCDevice(16549, blueprint_kind='long')
+print (d.blueprints)        # {'process': 'sc_air', 'long': 'sc_air_baseline'}
+print (d.blueprint_name)    # sc_air_baseline
+```
+
 - Search (see [docs](https://developer.smartcitizen.me/#basic-searching))
 
 ```

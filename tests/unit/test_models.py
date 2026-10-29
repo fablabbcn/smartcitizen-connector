@@ -31,7 +31,7 @@ def test_hardware_version_keeps_aware_dates():
 def test_hardware_postprocessing(hardware):
     hardware_postprocessing = HardwarePostprocessing.model_validate(hardware)
 
-    assert hardware_postprocessing.blueprint_url.endswith('sc_air.json')
+    assert hardware_postprocessing.blueprints == ['sc_air']
     assert len(hardware_postprocessing.versions) == 1
     assert hardware_postprocessing.versions[0].from_date == datetime(2024, 4, 1, tzinfo=timezone.utc)
     assert hardware_postprocessing.versions[0].to_date is None

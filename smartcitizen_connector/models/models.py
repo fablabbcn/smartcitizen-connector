@@ -102,7 +102,8 @@ class HardwareVersion(BaseModel):
         return value
 
 class HardwarePostprocessing(BaseModel):
-    blueprint_url: Optional[str] = None
+    # Names of the blueprints of the hardware, at most one of each kind (process, long, backup)
+    blueprints: List[str] = []
     description: Optional[str] = None
     versions: Optional[List[HardwareVersion]] = None
     forwarding: Optional[str] = None
