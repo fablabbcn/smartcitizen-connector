@@ -45,7 +45,7 @@ def test_bare_name_uses_base_url(requested):
 
 
 def test_full_url_is_used_as_is(requested):
-    full_url = 'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/hardware/SCAS220013.json'
+    full_url = 'https://flows.example.com/api/v1/hardware/SCAS220013.json'
     url, _, ok = check_postprocessing(Postprocessing(device_id=1, hardware_url=full_url))
 
     assert ok is True
@@ -53,11 +53,10 @@ def test_full_url_is_used_as_is(requested):
     assert requested == [full_url]
 
 
-def test_blueprint_url_is_not_rewritten(requested):
+def test_hardware_lists_its_blueprints(requested):
     _, hardware_postprocessing, _ = check_postprocessing({'device_id': 1, 'hardware_url': 'SCAS220013'})
 
-    assert hardware_postprocessing.blueprint_url == \
-        'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json'
+    assert hardware_postprocessing.blueprints == ['sc_air']
 
 
 def test_no_postprocessing():
@@ -92,8 +91,7 @@ def test_base_postprocessing_url_from_environment(monkeypatch):
         monkeypatch.delenv('BASE_POSTPROCESSING_URL')
         importlib.reload(config_module)
 
-    assert config_module.config.BASE_POSTPROCESSING_URL == \
-        'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/'
+    assert config_module.config.BASE_POSTPROCESSING_URL == 'https://flows.smartcitizen.me/api/v1/'
 
 
 FLOWS = 'https://flows.smartcitizen.me/api/v1/'
@@ -104,10 +102,9 @@ FLOWS = 'https://flows.smartcitizen.me/api/v1/'
      f'{FLOWS}hardware/SCAS220013.json'),
     ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/enhacement/flexible-handlers/hardware/SCAS210099.json',
      f'{FLOWS}hardware/SCAS210099.json'),
-    ('https://github.com/fablabbcn/smartcitizen-data/blob/master/blueprints/sc_21_station_module.json',
-     f'{FLOWS}blueprints/sc_21_station_module.json'),
+    # Blueprints are read by their name, from the hardware: their urls are not changed
     ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json',
-     f'{FLOWS}blueprints/sc_air.json'),
+     'https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json'),
     # Other urls are not changed
     ('https://smartcitizen.me/kits/14673', 'https://smartcitizen.me/kits/14673'),
     ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/calibrations/calibrations.json',
@@ -130,10 +127,10 @@ def test_github_hardware_url_uses_base_url(monkeypatch, requested):
     assert url == requested[0] == f'{FLOWS}hardware/SCAS220013.json'
 
 
-def test_github_blueprint_url_uses_base_url(monkeypatch, requested):
+def test_blueprints_are_read_by_name_from_the_base_url(monkeypatch, requested):
     monkeypatch.setattr(device_module.config, 'BASE_POSTPROCESSING_URL', FLOWS)
 
-    device_module.check_blueprint('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json')
+    device_module.get_blueprint('sc_air')
 
     assert requested == [f'{FLOWS}blueprints/sc_air.json']
 

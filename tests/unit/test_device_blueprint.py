@@ -320,3 +320,92 @@ def test_filled_columns_without_values_are_not_posted(blueprint, hardware, monke
 
     assert asyncio.run(device.post_data(columns='channels', clean_na='fill', dry_run=True)) is True
     assert device.not_posted == {'NO2': 'no readings'}
+
+
+# Blueprints of the hardware, selected by kind
+
+def served_blueprints(monkeypatch, blueprint):
+    ''' Blueprints served by name, of each kind. Returns the requested urls '''
+    from smartcitizen_connector.device import device as device_module
+
+    bodies = {'sc_air': blueprint,
+              'sc_air_baseline': dict(blueprint, meta={'kind': 'long'}),
+              'backup': {'meta': {'kind': 'backup'}, 'channels': []}}
+    requested = []
+
+    def safe_get(url, headers=None):
+        requested.append(url)
+        name = url.rsplit('/', 1)[-1].removesuffix('.json')
+        if name not in bodies:
+            raise ValueError(f'{url} not found')
+        return SimpleNamespace(json=lambda: bodies[name])
+
+    monkeypatch.setattr(device_module, 'safe_get', safe_get)
+    return requested
+
+
+def device_of(hardware, names, kind=None):
+    device = make_device(None, dict(hardware, blueprints=names))
+    device._blueprint_kind = kind
+    device._blueprints = {}
+    device._blueprint_name = None
+    return device
+
+
+@pytest.mark.parametrize('names, kind, expected', [
+    (['sc_air'], None, 'sc_air'),
+    (['sc_air', 'backup'], None, 'sc_air'),
+    # Without a process blueprint, the long one
+    (['sc_air_baseline'], None, 'sc_air_baseline'),
+    (['sc_air', 'sc_air_baseline'], None, 'sc_air'),
+    (['sc_air', 'sc_air_baseline'], 'process', 'sc_air'),
+    (['sc_air', 'sc_air_baseline'], 'long', 'sc_air_baseline'),
+    # Only backed up: nothing to process
+    (['backup'], None, None),
+    (['sc_air'], 'long', None),
+    ([], None, None),
+])
+def test_blueprint_of_the_hardware_by_kind(monkeypatch, blueprint, hardware, names, kind, expected):
+    served_blueprints(monkeypatch, blueprint)
+    device = device_of(hardware, names, kind)
+
+    assert device.__check_blueprint__() is (expected is not None)
+    assert device.blueprint_name == expected
+    if expected is not None:
+        device.__fill_blueprint__()
+        assert channel(device, 'NO2')['kwargs']['alphasense_id'] == '212830246'
+
+
+def test_blueprints_by_kind(monkeypatch, blueprint, hardware):
+    served_blueprints(monkeypatch, blueprint)
+    device = device_of(hardware, ['sc_air', 'sc_air_baseline'], 'long')
+    device.__check_blueprint__()
+
+    assert device.blueprints == {'process': 'sc_air', 'long': 'sc_air_baseline'}
+    assert device.blueprint_kind == 'long'
+
+
+def test_the_blueprint_url_of_the_device_is_not_used(monkeypatch, blueprint, hardware):
+    from smartcitizen_connector.device import device as device_module
+
+    requested = served_blueprints(monkeypatch, blueprint)
+    device = device_of(hardware, ['sc_air'])
+    device.json.postprocessing = SimpleNamespace(blueprint_url='https://example.com/own.json', hardware_url='SCAS1')
+
+    device.__check_blueprint__()
+
+    assert device.blueprint_name == 'sc_air'
+    assert requested == [f'{device_module.config.BASE_POSTPROCESSING_URL}blueprints/sc_air.json']
+
+
+def test_a_blueprint_that_cannot_be_loaded_is_left_out(monkeypatch, blueprint, hardware):
+    served_blueprints(monkeypatch, blueprint)
+    device = device_of(hardware, ['missing', 'sc_air_baseline'])
+
+    assert device.__check_blueprint__() is True
+    assert device.blueprints == {'long': 'sc_air_baseline'}
+
+
+def test_unknown_blueprint_kind():
+    with pytest.raises(ValueError, match='Unknown blueprint kind'):
+        SCDevice(id=1, blueprint_kind='other')
