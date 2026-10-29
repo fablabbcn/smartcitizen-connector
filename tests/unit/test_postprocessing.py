@@ -110,6 +110,8 @@ FLOWS = 'https://flows.smartcitizen.me/api/v1/'
     ('https://smartcitizen.me/kits/14673', None),
     ('https://raw.githubusercontent.com/fablabbcn/smartcitizen-data/master/blueprints/sc_air.json', None),
     ('www.example.com', None),
+    ('https://example.com/nothardware/SCAS220013.json', None),
+    ('SCAS220013\n', 'SCAS220013'),
     ('bad name', None),
     ('', None),
     (None, None),

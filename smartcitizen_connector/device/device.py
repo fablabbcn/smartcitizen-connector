@@ -12,7 +12,7 @@ from aiohttp import ClientResponseError, ClientResponse, ClientSession, ContentT
 from pandas import DataFrame, to_datetime
 from datetime import datetime, timezone
 from os import environ
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 import re
 import sys
 import json
@@ -51,10 +51,10 @@ def hardware_name(hardware_url):
     value = (hardware_url or '').strip()
     if '/' in value:
         path, _, value = value.rstrip('/').rpartition('/')
-        if not path.endswith('hardware'):
+        if path.rpartition('/')[2] != 'hardware':
             return None
     name = value.removesuffix('.json')
-    return name if METADATA_NAME.match(name) else None
+    return name if METADATA_NAME.fullmatch(name) else None
 
 
 def get_blueprint(name):
@@ -69,6 +69,14 @@ def get_blueprint(name):
     if not isinstance(blueprint, dict) or not isinstance(blueprint.get('meta') or {}, dict) \
             or not isinstance(blueprint.get('channels'), list):
         logger.warning(f'Blueprint {name} is not a valid blueprint')
+        return None
+    # Its channels, checks and exports as the device fills them
+    try:
+        TypeAdapter(List[CalculatedChannel]).validate_python(blueprint['channels'])
+        TypeAdapter(List[Check]).validate_python(blueprint.get('checks', []))
+        TypeAdapter(List[Export]).validate_python(blueprint.get('exports', []))
+    except ValidationError as error:
+        logger.warning(f'Blueprint {name} is not a valid blueprint: {error.error_count()} errors')
         return None
     return blueprint
 
