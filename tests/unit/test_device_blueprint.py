@@ -409,3 +409,46 @@ def test_a_blueprint_that_cannot_be_loaded_is_left_out(monkeypatch, blueprint, h
 def test_unknown_blueprint_kind():
     with pytest.raises(ValueError, match='Unknown blueprint kind'):
         SCDevice(id=1, blueprint_kind='other')
+
+
+@pytest.mark.parametrize('body', [['not', 'a', 'blueprint'], {'meta': 'process', 'channels': []},
+                                  {'meta': {}, 'channels': 'NO2'}])
+def test_an_invalid_blueprint_is_left_out(monkeypatch, blueprint, hardware, body):
+    from smartcitizen_connector.device import device as device_module
+
+    served_blueprints(monkeypatch, blueprint)
+    valid = device_module.safe_get
+
+    def safe_get(url, headers=None):
+        if url.endswith('/broken.json'):
+            return SimpleNamespace(json=lambda: body)
+        return valid(url, headers)
+
+    monkeypatch.setattr(device_module, 'safe_get', safe_get)
+    device = device_of(hardware, ['broken', 'sc_air_baseline'])
+
+    # The other blueprint of the hardware is still selected
+    assert device.__check_blueprint__() is True
+    assert device.blueprints == {'long': 'sc_air_baseline'}
+
+
+def test_the_first_channel_of_a_name_gets_the_hardware(blueprint, hardware):
+    no2 = next(item for item in blueprint['channels'] if item['name'] == 'NO2')
+    blueprint['channels'].append(dict(no2, function='alphasense_als'))
+    device = make_device(blueprint, hardware)
+
+    device.__get_channels__()
+
+    first, second = [item for item in device.channels if item['name'] == 'NO2']
+    assert first['kwargs']['alphasense_id'] == '212830246'
+    assert second['kwargs']['alphasense_id'] is None
+
+
+def test_apply_blueprint_sets_its_name(blueprint, hardware):
+    device = make_device(blueprint, hardware)
+    device._blueprint_name = 'sc_air'
+    device.__fill_blueprint__()
+
+    device.apply_blueprint(dict(blueprint, meta={'kind': 'long'}), name='sc_air_baseline')
+
+    assert (device.blueprint_name, device.blueprint_kind) == ('sc_air_baseline', 'long')

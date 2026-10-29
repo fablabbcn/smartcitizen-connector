@@ -35,34 +35,42 @@ class NpEncoder(JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-# Hardware files of the smartcitizen-data repository on GitHub, in any branch (branches can contain "/")
-SMARTCITIZEN_DATA_URL = re.compile(
-    r'^https?://(?:raw\.githubusercontent\.com/fablabbcn/smartcitizen-data/.+?'
-    r'|github\.com/fablabbcn/smartcitizen-data/(?:blob|raw)/.+?)'
-    r'/(?P<folder>hardware)/(?P<name>[^/?#]+?)(?:\.json)?$')
+# Names of hardware and blueprints
+METADATA_NAME = re.compile(r'^[A-Za-z0-9_-]{1,64}$')
 
 # Kinds of blueprints, as in their meta.kind (process when missing). A hardware has at most one of each
 PROCESS, LONG, BACKUP = 'process', 'long', 'backup'
 BLUEPRINT_KINDS = (PROCESS, LONG, BACKUP)
 
 
-def to_base_url(url):
-    ''' Redirects smartcitizen-data hardware urls to BASE_POSTPROCESSING_URL '''
-    match = SMARTCITIZEN_DATA_URL.match(url.strip()) if url else None
-    if match is None:
-        return url
-    return f"{config.BASE_POSTPROCESSING_URL}{match['folder']}/{match['name']}.json"
+def hardware_name(hardware_url):
+    '''
+    Name of the hardware of a postprocessing hardware_url: a bare name, or a url ending in
+    hardware/<name>.json (on any server). None if it is not one
+    '''
+    value = (hardware_url or '').strip()
+    if '/' in value:
+        path, _, value = value.rstrip('/').rpartition('/')
+        if not path.endswith('hardware'):
+            return None
+    name = value.removesuffix('.json')
+    return name if METADATA_NAME.match(name) else None
 
 
 def get_blueprint(name):
-    ''' Blueprint of BASE_POSTPROCESSING_URL by its name, or None '''
+    ''' Blueprint of BASE_POSTPROCESSING_URL by its name, or None (also if it is not a valid blueprint) '''
     if not name:
         return None
     try:
-        return safe_get(f'{config.BASE_POSTPROCESSING_URL}blueprints/{name}.json').json()
+        blueprint = safe_get(f'{config.BASE_POSTPROCESSING_URL}blueprints/{name}.json').json()
     except Exception:
         logger.warning(f'Blueprint {name} could not be loaded')
         return None
+    if not isinstance(blueprint, dict) or not isinstance(blueprint.get('meta') or {}, dict) \
+            or not isinstance(blueprint.get('channels', []), list):
+        logger.warning(f'Blueprint {name} is not a valid blueprint')
+        return None
+    return blueprint
 
 
 def blueprint_kind(blueprint):
@@ -90,14 +98,12 @@ def check_postprocessing(postprocessing):
     else:
         _postprocessing = postprocessing
 
-    # Check the url in hardware
-    urls = url_checker(_postprocessing.hardware_url)
-    # If URL is empty, try prepending base url from config
-    if not urls:
-        tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{_postprocessing.hardware_url}.json"
-    else:
-        if len(urls)>1: logger.warning('URLs for postprocessing recipe are more than one, trying first')
-        tentative_url = to_base_url(urls[0])
+    # The hardware is always read by its name from BASE_POSTPROCESSING_URL, whatever server the url names
+    name = hardware_name(_postprocessing.hardware_url)
+    if name is None:
+        logger.warning(f'hardware_url {_postprocessing.hardware_url!r} is not a hardware name')
+        return '', None, False
+    tentative_url = f"{config.BASE_POSTPROCESSING_URL}hardware/{name}.json"
 
     logger.info(f'Device {_postprocessing.device_id} has postprocessing information')
 
@@ -219,21 +225,23 @@ class SCDevice:
             self._filled_properties.append('exports')
         self.__make_properties__()
 
-    def apply_blueprint(self, blueprint):
+    def apply_blueprint(self, blueprint, name=None):
         '''
-        Uses another blueprint (a dict, e.g. a long processing blueprint) with the hardware of
-        the device: its channels are filled with the sensors of each hardware version, as for the
+        Uses another blueprint (a dict, e.g. a long processing blueprint, and its name) with the hardware
+        of the device: its channels are filled with the sensors of each hardware version, as for the
         blueprint of the hardware. Returns True if the channels were filled from the hardware
         '''
         # Restored as it was if the blueprint cannot be filled (e.g. without channels)
-        names = ('_blueprint', '_channels', '_versions', '_checks', '_exports', '_filled_properties', '_properties')
-        previous = {name: getattr(self, name) for name in names}
+        names = ('_blueprint', '_blueprint_name', '_channels', '_versions', '_checks', '_exports',
+                 '_filled_properties', '_properties')
+        previous = {item: getattr(self, item, None) for item in names}
         self._blueprint = blueprint
+        self._blueprint_name = name
         try:
             self.__fill_blueprint__()
         except Exception:
-            for name, value in previous.items():
-                setattr(self, name, value)
+            for item, value in previous.items():
+                setattr(self, item, value)
             raise
         return 'channels' in self._filled_properties
 
@@ -262,7 +270,10 @@ class SCDevice:
     def __version_channels__(self, version):
         ''' Blueprint channels filled with the sensors of a hardware version '''
         channels = TypeAdapter(List[CalculatedChannel]).validate_python([y for y in self._blueprint['channels']])
-        by_name = {item.name: item for item in channels}
+        # The first channel of each name, as the lookups by name of the data
+        by_name = {}
+        for item in channels:
+            by_name.setdefault(item.name, item)
         for slot in version.ids or {}:
             channel = get_slot(slot, version.ids[slot])
             if channel is None:
