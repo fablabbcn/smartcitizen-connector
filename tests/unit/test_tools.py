@@ -1,11 +1,17 @@
+import sys
+
 import pytest
 from numpy import nan
 from pandas import DataFrame
+from requests.exceptions import ChunkedEncodingError, ConnectionError
 
 from smartcitizen_connector.models import Export
 from smartcitizen_connector.tools import (clean, convert_freq_to_rollup, dict_fmerge,
                                           find_by_field, freq_2_rollup_lut, get_alphasense, get_pt_temp,
                                           get_slot, pandas_freq, process_headers, url_checker)
+
+# The package exports functions with the same names as its modules
+tools_module = sys.modules['smartcitizen_connector.tools.tools']
 
 
 @pytest.mark.parametrize('sensor_id, pollutant, electrode', [
@@ -201,3 +207,58 @@ def test_localise_other_dates(date, expected):
     from smartcitizen_connector.tools import localise_date
 
     assert localise_date(date, 'UTC') == Timestamp(expected, tz='UTC')
+
+
+class Ok:
+    def raise_for_status(self):
+        pass
+
+
+@pytest.mark.parametrize('error', [ChunkedEncodingError("IncompleteRead(18605 bytes read, 235003 more expected)"),
+                                   ConnectionError('Connection reset by peer')])
+def test_safe_get_retries_broken_connections(monkeypatch, error):
+    calls = []
+
+    def get(url, headers=None, timeout=None):
+        calls.append(url)
+        if len(calls) == 1:
+            raise error
+        return Ok()
+
+    monkeypatch.setattr(tools_module, 'get', get)
+    monkeypatch.setattr(tools_module.time, 'sleep', lambda seconds: None)
+
+    assert isinstance(tools_module.safe_get('https://api/devices'), Ok)
+    assert len(calls) == 2
+
+
+def test_safe_get_raises_after_the_last_attempt(monkeypatch):
+    calls = []
+
+    def get(url, headers=None, timeout=None):
+        calls.append(url)
+        raise ChunkedEncodingError('IncompleteRead')
+
+    monkeypatch.setattr(tools_module, 'get', get)
+    monkeypatch.setattr(tools_module.time, 'sleep', lambda seconds: None)
+
+    with pytest.raises(ChunkedEncodingError):
+        tools_module.safe_get('https://api/devices')
+    assert len(calls) == tools_module.config._max_retries
+
+
+def test_safe_get_does_not_retry_read_timeouts_of_the_body(monkeypatch):
+    from urllib3.exceptions import ReadTimeoutError
+    calls = []
+
+    def get(url, headers=None, timeout=None):
+        calls.append(url)
+        # As requests raises a timeout while reading the body
+        raise ConnectionError(ReadTimeoutError(None, url, 'Read timed out.'))
+
+    monkeypatch.setattr(tools_module, 'get', get)
+    monkeypatch.setattr(tools_module.time, 'sleep', lambda seconds: None)
+
+    with pytest.raises(ConnectionError):
+        tools_module.safe_get('https://api/devices')
+    assert len(calls) == 1
