@@ -4,7 +4,7 @@ from datetime import datetime
 from smartcitizen_connector._config import config
 from typing import Optional
 from termcolor import colored
-from requests.exceptions import HTTPError
+from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError
 from requests import get
 import re
 import logging
@@ -200,6 +200,12 @@ def safe_get(url, headers = None):
                 time.sleep(config._retry_interval)
                 continue
             raise
+        except (ChunkedEncodingError, ConnectionError) as exc:
+            # The connection dropped (also in the middle of a response): try again, or raise on the last attempt
+            if n == config._max_retries - 1:
+                raise
+            logger.warning(f'{url}: {exc}. Retrying ({n + 1}/{config._max_retries})')
+            time.sleep(config._retry_interval)
         else:
             break
     return r
