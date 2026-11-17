@@ -245,3 +245,20 @@ def test_safe_get_raises_after_the_last_attempt(monkeypatch):
     with pytest.raises(ChunkedEncodingError):
         tools_module.safe_get('https://api/devices')
     assert len(calls) == tools_module.config._max_retries
+
+
+def test_safe_get_does_not_retry_read_timeouts_of_the_body(monkeypatch):
+    from urllib3.exceptions import ReadTimeoutError
+    calls = []
+
+    def get(url, headers=None, timeout=None):
+        calls.append(url)
+        # As requests raises a timeout while reading the body
+        raise ConnectionError(ReadTimeoutError(None, url, 'Read timed out.'))
+
+    monkeypatch.setattr(tools_module, 'get', get)
+    monkeypatch.setattr(tools_module.time, 'sleep', lambda seconds: None)
+
+    with pytest.raises(ConnectionError):
+        tools_module.safe_get('https://api/devices')
+    assert len(calls) == 1
